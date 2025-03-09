@@ -82,7 +82,7 @@ Future<void> fetchTrampasActivas() async {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildSummaryCard("Detectados Esta Semana", "$totalInsectosSemana", Icons.bug_report),
-                _buildSummaryCard("Alertas Activas", "5", Icons.warning),
+                _buildSummaryCard("Alertas Activas", "0", Icons.warning),
                 _buildSummaryCard("Trampas Activas", trampasActivas.toString(), Icons.sensors),
               ],
             ),
