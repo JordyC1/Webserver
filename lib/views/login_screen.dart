@@ -30,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://10.0.0.114/login.php"),
+        Uri.parse("http://raspberrypi2.local/login.php"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": email,

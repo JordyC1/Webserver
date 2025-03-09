@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/user_menu.dart'; // Importamos el nuevo menú
 import 'dashboard_screen.dart';
+import 'ver_lecturas.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -17,7 +18,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = [
     DashboardScreen(),
     const Center(child: Text("Usuarios", style: TextStyle(fontSize: 24))),
-    const Center(child: Text("Mantenimiento", style: TextStyle(fontSize: 24))),
+    VerLecturasScreen(),  // ✅ Aquí se usa la nueva pantalla
     const Center(child: Text("Alertas", style: TextStyle(fontSize: 24))),
     const Center(child: Text("Exportar", style: TextStyle(fontSize: 24))),
   ];
