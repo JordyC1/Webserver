@@ -1,0 +1,190 @@
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:fl_chart/fl_chart.dart';
+
+class DashboardScreen extends StatefulWidget {
+  @override
+  _DashboardScreenState createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  List<int> weeklyData = []; // Lista de datos de la gráfica
+  List<Map<String, dynamic>> detecciones = []; // Datos para la tabla
+
+  @override
+  void initState() {
+    super.initState();
+    fetchWeeklyDetections();
+    fetchRecentDetections();
+  }
+
+  // Obtener datos de la gráfica de barras desde PHP
+  Future<void> fetchWeeklyDetections() async {
+    final response = await http.get(Uri.parse("http://raspberrypi2.local/get_weekly_detections.php"));
+
+    if (response.statusCode == 200) {
+      setState(() {
+        weeklyData = response.body.split(",").map((e) => int.tryParse(e.trim()) ?? 0).toList();
+      });
+    } else {
+      print("Error al obtener los datos de la gráfica: ${response.statusCode}");
+    }
+  }
+
+  // Obtener datos de las detecciones recientes desde PHP
+  Future<void> fetchRecentDetections() async {
+    final response = await http.get(Uri.parse("http://raspberrypi2.local/get_detections.php"));
+
+    if (response.statusCode == 200) {
+      setState(() {
+        detecciones = List<Map<String, dynamic>>.from(jsonDecode(response.body));
+      });
+    } else {
+      print("Error al obtener las detecciones recientes: ${response.statusCode}");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Color(0xFFF5F7FA),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Dashboard", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
+
+            // Tarjetas de resumen
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildSummaryCard("Total Detectados", "320", Icons.bug_report),
+                _buildSummaryCard("Alertas Activas", "5", Icons.warning),
+                _buildSummaryCard("Trampas Activas", "12", Icons.sensors),
+              ],
+            ),
+            SizedBox(height: 20),
+
+            // Gráfico de Barras de detecciones semanales
+            Expanded(
+              child: Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: weeklyData.isNotEmpty ? weeklyData.reduce((a, b) => a > b ? a : b).toDouble() + 10 : 100,
+                      barGroups: _getBarGroups(),
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) {
+                              return Text(value.toInt().toString(),
+                                  style: TextStyle(fontSize: 12));
+                            },
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              const days = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+                              return Padding(
+                                padding: EdgeInsets.only(top: 5),
+                                child: Text(days[value.toInt() % days.length],
+                                    style: TextStyle(fontSize: 12))
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      gridData: FlGridData(show: true),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
+
+            // Tabla de Detecciones Recientes
+            Expanded(
+              child: Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Detecciones Recientes", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 10),
+                      Expanded(
+                        child: detecciones.isEmpty
+                            ? Center(child: Text("No hay datos aún..."))
+                            : ListView.builder(
+                                itemCount: detecciones.length,
+                                itemBuilder: (context, index) {
+                                  final deteccion = detecciones[index];
+                                  return ListTile(
+                                    leading: Icon(Icons.bug_report, color: Colors.blue),
+                                    title: Text(deteccion["tipo"]),
+                                    subtitle: Text("Cantidad: ${deteccion["cantidad"]} | Fecha: ${deteccion["fecha"]}"),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Método para construir tarjetas de resumen
+  Widget _buildSummaryCard(String title, String value, IconData icon) {
+    return Expanded(
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Icon(icon, size: 40, color: Colors.blue),
+              SizedBox(height: 10),
+              Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              SizedBox(height: 5),
+              Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Método para construir los datos del gráfico de barras
+  List<BarChartGroupData> _getBarGroups() {
+    return List.generate(weeklyData.length, (index) {
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            toY: weeklyData[index].toDouble(),
+            color: Colors.blue,
+            width: 16,
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ],
+      );
+    });
+  }
+}
