@@ -11,21 +11,41 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   List<int> weeklyData = []; // Lista de datos de la gráfica
   List<Map<String, dynamic>> detecciones = []; // Datos para la tabla
+  int totalInsectosSemana = 0; // Variable para la tarjeta
+  int trampasActivas = 0; // Variable para la tarjeta
 
   @override
   void initState() {
     super.initState();
     fetchWeeklyDetections();
     fetchRecentDetections();
+    fetchTrampasActivas(); 
   }
+  
+  // Obtener cantidad de trampas activas desde PHP
+// Obtener cantidad de trampas activas desde PHP
+Future<void> fetchTrampasActivas() async {
+  final response = await http.get(Uri.parse("http://raspberrypi2.local/get_trampas_activas.php"));
+
+  if (response.statusCode == 200) {
+    setState(() {
+      // Asigna correctamente el valor recibido
+      trampasActivas = int.parse(jsonDecode(response.body)["trampas_activas"]);
+    });
+  } else {
+    print("Error al obtener trampas activas: ${response.statusCode}");
+  }
+}
 
   // Obtener datos de la gráfica de barras desde PHP
   Future<void> fetchWeeklyDetections() async {
     final response = await http.get(Uri.parse("http://raspberrypi2.local/get_weekly_detections.php"));
 
     if (response.statusCode == 200) {
+      List<int> valores = response.body.split(",").map((e) => int.tryParse(e.trim()) ?? 0).toList();
       setState(() {
-        weeklyData = response.body.split(",").map((e) => int.tryParse(e.trim()) ?? 0).toList();
+        weeklyData = valores;
+        totalInsectosSemana = valores.reduce((a, b) => a + b); // Sumar valores
       });
     } else {
       print("Error al obtener los datos de la gráfica: ${response.statusCode}");
@@ -61,9 +81,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildSummaryCard("Total Detectados", "320", Icons.bug_report),
+                _buildSummaryCard("Detectados Esta Semana", "$totalInsectosSemana", Icons.bug_report),
                 _buildSummaryCard("Alertas Activas", "5", Icons.warning),
-                _buildSummaryCard("Trampas Activas", "12", Icons.sensors),
+                _buildSummaryCard("Trampas Activas", trampasActivas.toString(), Icons.sensors),
               ],
             ),
             SizedBox(height: 20),
