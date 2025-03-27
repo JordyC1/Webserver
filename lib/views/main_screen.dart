@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import 'dashboard_screen.dart';
 import 'ver_lecturas.dart';
 import 'usuarios_screen.dart'; // ✅ Importamos la nueva pantalla
+import 'alertas_screen.dart'; // Importar la nueva pantalla
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -21,7 +22,7 @@ class _MainScreenState extends State<MainScreen> {
     DashboardScreen(),
     UsuariosScreen(), // ✅ Se agregó la pantalla de administración de usuarios
     VerLecturasScreen(),
-    const Center(child: Text("Alertas", style: TextStyle(fontSize: 24))),
+    AlertasScreen(), // Agregar la pantalla de alertas
     const Center(child: Text("Exportar", style: TextStyle(fontSize: 24))),
   ];
 
