@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async'; // Importar Timer
 import 'package:fl_chart/fl_chart.dart';
 import '../theme/app_theme.dart';
 
@@ -9,18 +10,58 @@ class DashboardScreen extends StatefulWidget {
   _DashboardScreenState createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with SingleTickerProviderStateMixin {
   List<int> weeklyData = []; // Lista de datos de la gráfica
   List<Map<String, dynamic>> detecciones = []; // Datos para la tabla
   int totalInsectosSemana = 0; // Variable para la tarjeta
   int trampasActivas = 0; // Variable para la tarjeta
+  Timer? _timer; // Timer para actualizar datos periódicamente
+  late AnimationController _animationController;
+  late Animation<double> _pulseAnimation;
+  String lastUpdateTime = "";
 
   @override
   void initState() {
     super.initState();
+
+    // Inicializar el controlador de animación
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    // Crear una animación pulsante
+    _pulseAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Repetir la animación
+    _animationController.repeat(reverse: true);
+
+    // Actualizar la hora actual
+    _updateTime();
+
     fetchWeeklyDetections();
     fetchRecentDetections();
     fetchTrampasActivas();
+
+    // Configurar timer para actualizar cada segundo
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      fetchRecentDetections();
+      _updateTime();
+    });
+  }
+
+  @override
+  void dispose() {
+    // Cancelar el timer cuando el widget se destruya
+    _timer?.cancel();
+    _animationController.dispose();
+    super.dispose();
   }
 
   // Obtener cantidad de trampas activas desde PHP
@@ -61,18 +102,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Obtener datos de las detecciones recientes desde PHP
   Future<void> fetchRecentDetections() async {
-    final response = await http
-        .get(Uri.parse("http://raspberrypi2.local/get_detections.php"));
+    try {
+      final response = await http
+          .get(Uri.parse("http://raspberrypi2.local/get_detections.php"));
 
-    if (response.statusCode == 200) {
-      setState(() {
-        detecciones =
-            List<Map<String, dynamic>>.from(jsonDecode(response.body));
-      });
-    } else {
-      print(
-          "Error al obtener las detecciones recientes: ${response.statusCode}");
+      if (response.statusCode == 200) {
+        // Verificar si el widget sigue montado antes de actualizar el estado
+        if (mounted) {
+          setState(() {
+            detecciones =
+                List<Map<String, dynamic>>.from(jsonDecode(response.body));
+          });
+        }
+      } else {
+        print(
+            "Error al obtener las detecciones recientes: ${response.statusCode}");
+      }
+    } catch (e) {
+      // Capturar errores para evitar fallos en la actualización automática
+      print("Error al obtener las detecciones recientes: $e");
     }
+  }
+
+  // Actualizar la hora actual en formato HH:MM:SS
+  void _updateTime() {
+    final now = DateTime.now();
+    setState(() {
+      lastUpdateTime =
+          "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+    });
   }
 
   @override
@@ -203,11 +261,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("Detecciones Recientes",
-                                style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.textPrimary)),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text("Detecciones Recientes",
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.textPrimary)),
+                                // Indicador sutil de actualización
+                                AnimatedBuilder(
+                                  animation: _animationController,
+                                  builder: (context, child) {
+                                    return Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: AppTheme.primaryBlue,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppTheme.primaryBlue
+                                                .withOpacity(0.5 *
+                                                    _pulseAnimation.value),
+                                            blurRadius:
+                                                4.0 * _pulseAnimation.value,
+                                            spreadRadius:
+                                                1.0 * _pulseAnimation.value,
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                )
+                              ],
+                            ),
+                            Text(
+                              "Última actualización: $lastUpdateTime",
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
                             const SizedBox(height: 10),
                             Expanded(
                               child: detecciones.isEmpty
