@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../theme/app_theme.dart';
 
 class VerLecturasScreen extends StatefulWidget {
   @override
@@ -25,7 +26,8 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
   Future<void> _fetchLecturas() async {
     setState(() => _isLoading = true);
 
-    final response = await http.get(Uri.parse("http://raspberrypi2.local/get_lecturas.php"));
+    final response =
+        await http.get(Uri.parse("http://raspberrypi2.local/get_lecturas.php"));
 
     setState(() {
       _isLoading = false;
@@ -40,15 +42,16 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text("Ver Lecturas", style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
-        elevation: 1,
+        title:
+            Text("Ver Lecturas", style: TextStyle(color: AppTheme.textPrimary)),
+        backgroundColor: AppTheme.cardBackground,
+        iconTheme: IconThemeData(color: AppTheme.textPrimary),
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.blue),
+            icon: Icon(Icons.refresh, color: AppTheme.primaryBlue),
             tooltip: "Actualizar datos",
             onPressed: _fetchLecturas,
           ),
@@ -60,7 +63,8 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
           children: [
             _buildFilters(),
             const SizedBox(height: 10),
-            Expanded(child: _isLoading ? _buildLoadingIndicator() : _buildTable()),
+            Expanded(
+                child: _isLoading ? _buildLoadingIndicator() : _buildTable()),
             _buildPaginationControls(),
           ],
         ),
@@ -82,8 +86,12 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
       children: [
         // Filtro por fecha
         DropdownButton<String>(
-          hint: const Text("Filtrar por Fecha"),
+          hint: Text("Filtrar por Fecha",
+              style: TextStyle(color: AppTheme.textSecondary)),
           value: _selectedFilterDate,
+          dropdownColor: AppTheme.cardBackground,
+          style: TextStyle(color: AppTheme.textPrimary),
+          icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryBlue),
           onChanged: (value) {
             setState(() {
               _selectedFilterDate = value;
@@ -97,17 +105,24 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
 
         // Ordenar por ID o cantidad
         DropdownButton<String>(
-          hint: const Text("Ordenar"),
+          hint:
+              Text("Ordenar", style: TextStyle(color: AppTheme.textSecondary)),
           value: _selectedSort,
+          dropdownColor: AppTheme.cardBackground,
+          style: TextStyle(color: AppTheme.textPrimary),
+          icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryBlue),
           onChanged: (value) {
             setState(() {
               _selectedSort = value;
               _applyFilters();
             });
           },
-          items: ["ID Ascendente", "ID Descendente", "Cantidad Ascendente", "Cantidad Descendente"]
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
+          items: [
+            "ID Ascendente",
+            "ID Descendente",
+            "Cantidad Ascendente",
+            "Cantidad Descendente"
+          ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
         ),
       ],
     );
@@ -123,7 +138,9 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
         width: MediaQuery.of(context).size.width * 0.9, // Adaptación responsiva
         child: Card(
           elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          color: AppTheme.cardBackground,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           child: DataTable(
             columnSpacing: 20,
             columns: const [
@@ -157,9 +174,8 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
       children: [
         IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: _currentPage > 1
-              ? () => setState(() => _currentPage--)
-              : null,
+          onPressed:
+              _currentPage > 1 ? () => setState(() => _currentPage--) : null,
         ),
         Text("Página $_currentPage de $totalPages"),
         IconButton(
@@ -213,6 +229,7 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
   List<Map<String, dynamic>> _getPaginatedLecturas() {
     int startIndex = (_currentPage - 1) * _itemsPerPage;
     int endIndex = startIndex + _itemsPerPage;
-    return lecturas.sublist(startIndex, endIndex > lecturas.length ? lecturas.length : endIndex);
+    return lecturas.sublist(
+        startIndex, endIndex > lecturas.length ? lecturas.length : endIndex);
   }
 }

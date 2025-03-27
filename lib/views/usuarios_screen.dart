@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../theme/app_theme.dart';
 
 class UsuariosScreen extends StatefulWidget {
   @override
@@ -23,7 +24,8 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
   Future<void> _fetchUsuarios() async {
     setState(() => _isLoading = true);
 
-    final response = await http.get(Uri.parse("http://raspberrypi2.local/get_usuarios.php"));
+    final response =
+        await http.get(Uri.parse("http://raspberrypi2.local/get_usuarios.php"));
 
     setState(() {
       _isLoading = false;
@@ -65,15 +67,16 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text("Administración de Usuarios", style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
-        elevation: 1,
+        title: Text("Administración de Usuarios",
+            style: TextStyle(color: AppTheme.textPrimary)),
+        backgroundColor: AppTheme.cardBackground,
+        iconTheme: IconThemeData(color: AppTheme.textPrimary),
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.blue),
+            icon: Icon(Icons.refresh, color: AppTheme.primaryBlue),
             tooltip: "Actualizar datos",
             onPressed: _fetchUsuarios,
           ),
@@ -85,7 +88,9 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
           children: [
             _buildSearchAndFilters(),
             const SizedBox(height: 10),
-            Expanded(child: _isLoading ? _buildLoadingIndicator() : _buildUserTable()),
+            Expanded(
+                child:
+                    _isLoading ? _buildLoadingIndicator() : _buildUserTable()),
             _buildAddUserButton(),
           ],
         ),
@@ -110,8 +115,11 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
             decoration: InputDecoration(
               hintText: "Buscar por nombre o correo",
               filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+              fillColor: AppTheme.cardBackground,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppTheme.dividerColor),
+              ),
             ),
             onChanged: (value) {
               setState(() {
@@ -124,7 +132,8 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
 
         // Filtro por rol
         DropdownButton<String>(
-          hint: const Text("Filtrar por rol"),
+          hint: Text("Filtrar por rol",
+              style: TextStyle(color: AppTheme.textSecondary)),
           value: _selectedRole,
           onChanged: (value) {
             setState(() {
@@ -166,13 +175,13 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
               DataCell(Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blue),
+                    icon: Icon(Icons.edit, color: AppTheme.primaryBlue),
                     onPressed: () {
                       // Implementar función de editar usuario
                     },
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
+                    icon: Icon(Icons.delete, color: Colors.redAccent),
                     onPressed: () {
                       _confirmDelete(usuario["id"]);
                     },
@@ -195,10 +204,12 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
           // Implementar función de agregar usuario
         },
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text("Agregar Usuario", style: TextStyle(color: Colors.white)),
+        label: const Text("Agregar Usuario",
+            style: TextStyle(color: Colors.white)),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          backgroundColor: AppTheme.primaryBlue,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         ),
       ),
@@ -211,7 +222,8 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Eliminar Usuario"),
-        content: const Text("¿Estás seguro de que deseas eliminar este usuario?"),
+        content:
+            const Text("¿Estás seguro de que deseas eliminar este usuario?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

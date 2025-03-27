@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/user_menu.dart';
+import '../theme/app_theme.dart';
 import 'dashboard_screen.dart';
 import 'ver_lecturas.dart';
 import 'usuarios_screen.dart'; // ✅ Importamos la nueva pantalla
@@ -18,7 +19,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     DashboardScreen(),
-    UsuariosScreen(),  // ✅ Se agregó la pantalla de administración de usuarios
+    UsuariosScreen(), // ✅ Se agregó la pantalla de administración de usuarios
     VerLecturasScreen(),
     const Center(child: Text("Alertas", style: TextStyle(fontSize: 24))),
     const Center(child: Text("Exportar", style: TextStyle(fontSize: 24))),
@@ -27,7 +28,8 @@ class _MainScreenState extends State<MainScreen> {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-      Navigator.pop(context); // Cierra el Drawer después de seleccionar una opción
+      Navigator.pop(
+          context); // Cierra el Drawer después de seleccionar una opción
     });
   }
 
@@ -36,12 +38,12 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       drawer: SideMenu(onItemTapped: _onItemTapped),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
+        backgroundColor: AppTheme.cardBackground,
+        iconTheme: IconThemeData(color: AppTheme.textPrimary),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text("SmartTrap", style: TextStyle(color: Colors.black)),
+            Text("SmartTrap", style: TextStyle(color: AppTheme.textPrimary)),
 
             // Efecto hover en el icono de usuario
             MouseRegion(
@@ -51,7 +53,7 @@ class _MainScreenState extends State<MainScreen> {
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isHovered ? Colors.grey.shade300 : Colors.transparent,
+                  color: isHovered ? AppTheme.dividerColor : Colors.transparent,
                 ),
                 padding: const EdgeInsets.all(5),
                 child: const UserMenu(), // Usa el menú emergente de usuario

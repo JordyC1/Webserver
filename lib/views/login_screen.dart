@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'register_screen.dart';
+import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -74,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF3FF),
+      backgroundColor: AppTheme.backgroundColor,
       body: Center(
         child: SingleChildScrollView(
           child: ConstrainedBox(
@@ -84,14 +85,16 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.bug_report, size: 100, color: Colors.black),
+                  Icon(Icons.bug_report,
+                      size: 100, color: AppTheme.primaryBlue),
                   const SizedBox(height: 10),
                   Text(
                     "SmartTrap",
                     style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade900),
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryBlue,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   _buildTextField(
@@ -102,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ElevatedButton(
                     onPressed: isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade900,
+                      backgroundColor: AppTheme.primaryBlue,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20)),
                       padding: const EdgeInsets.symmetric(
@@ -118,7 +121,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("¿No tienes cuenta?"),
+                      Text("¿No tienes cuenta?",
+                          style: TextStyle(color: AppTheme.textSecondary)),
                       const SizedBox(width: 5),
                       GestureDetector(
                         onTap: () {
@@ -128,21 +132,23 @@ class _LoginScreenState extends State<LoginScreen> {
                                 builder: (context) => RegisterScreen()),
                           );
                         },
-                        child: const Text(
+                        child: Text(
                           "Regístrate aquí",
                           style: TextStyle(
-                              color: Colors.blue, fontWeight: FontWeight.bold),
+                              color: AppTheme.primaryBlue,
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
                   GestureDetector(
-                    onTap: () {}, // Implementar recuperación de contraseña
-                    child: const Text(
+                    onTap: () {},
+                    child: Text(
                       "Olvidé mi contraseña",
                       style: TextStyle(
-                          color: Colors.blue, fontWeight: FontWeight.bold),
+                          color: AppTheme.primaryBlue,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -160,18 +166,30 @@ class _LoginScreenState extends State<LoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: AppTheme.textPrimary)),
         const SizedBox(height: 5),
         TextField(
           controller: controller,
           obscureText: isPassword,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppTheme.cardBackground,
             hintText: isPassword ? "************" : "User@gmail.com",
             border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: AppTheme.dividerColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: AppTheme.dividerColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: AppTheme.primaryBlue),
+            ),
           ),
         ),
       ],
