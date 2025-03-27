@@ -104,128 +104,148 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             SizedBox(height: 20),
 
-            // Gráfico de Barras de detecciones semanales
+            // Gráfico y Lecturas Recientes en fila
             Expanded(
-              child: Card(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: BarChart(
-                    BarChartData(
-                      alignment: BarChartAlignment.spaceAround,
-                      maxY: weeklyData.isNotEmpty
-                          ? weeklyData
-                                  .reduce((a, b) => a > b ? a : b)
-                                  .toDouble() +
-                              10
-                          : 100,
-                      barGroups: _getBarGroups(),
-                      titlesData: FlTitlesData(
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            getTitlesWidget: (value, meta) {
-                              return Text(value.toInt().toString(),
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.textSecondary));
-                            },
-                          ),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              const days = [
-                                "Lun",
-                                "Mar",
-                                "Mié",
-                                "Jue",
-                                "Vie",
-                                "Sáb",
-                                "Dom"
-                              ];
-                              return Padding(
-                                padding: EdgeInsets.only(top: 5),
-                                child: Text(days[value.toInt() % days.length],
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.textSecondary)),
-                              );
-                            },
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Gráfico de Barras de detecciones semanales (2/3 del ancho)
+                  Expanded(
+                    flex: 2,
+                    child: Card(
+                      color: AppTheme.cardBackground,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: BarChart(
+                          BarChartData(
+                            alignment: BarChartAlignment.spaceAround,
+                            maxY: weeklyData.isNotEmpty
+                                ? weeklyData
+                                        .reduce((a, b) => a > b ? a : b)
+                                        .toDouble() +
+                                    10
+                                : 100,
+                            barGroups: _getBarGroups(),
+                            titlesData: FlTitlesData(
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 40,
+                                  getTitlesWidget: (value, meta) {
+                                    return Text(value.toInt().toString(),
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textSecondary));
+                                  },
+                                ),
+                              ),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, meta) {
+                                    const days = [
+                                      "Lun",
+                                      "Mar",
+                                      "Mié",
+                                      "Jue",
+                                      "Vie",
+                                      "Sáb",
+                                      "Dom"
+                                    ];
+                                    return Padding(
+                                      padding: EdgeInsets.only(top: 5),
+                                      child: Text(
+                                          days[value.toInt() % days.length],
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: AppTheme.textSecondary)),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            borderData: FlBorderData(show: false),
+                            gridData: FlGridData(
+                              show: true,
+                              getDrawingHorizontalLine: (value) {
+                                return FlLine(
+                                  color: AppTheme.dividerColor,
+                                  strokeWidth: 1,
+                                );
+                              },
+                              getDrawingVerticalLine: (value) {
+                                return FlLine(
+                                  color: AppTheme.dividerColor,
+                                  strokeWidth: 1,
+                                );
+                              },
+                            ),
+                            backgroundColor: AppTheme.cardBackground,
                           ),
                         ),
                       ),
-                      borderData: FlBorderData(show: false),
-                      gridData: FlGridData(
-                        show: true,
-                        getDrawingHorizontalLine: (value) {
-                          return FlLine(
-                            color: AppTheme.dividerColor,
-                            strokeWidth: 1,
-                          );
-                        },
-                        getDrawingVerticalLine: (value) {
-                          return FlLine(
-                            color: AppTheme.dividerColor,
-                            strokeWidth: 1,
-                          );
-                        },
-                      ),
-                      backgroundColor: AppTheme.cardBackground,
                     ),
                   ),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
 
-            // Tabla de Detecciones Recientes
-            Expanded(
-              child: Card(
-                color: AppTheme.cardBackground,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Detecciones Recientes",
-                          style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textPrimary)),
-                      SizedBox(height: 10),
-                      Expanded(
-                        child: detecciones.isEmpty
-                            ? Center(
-                                child: Text("No hay datos aún...",
-                                    style: TextStyle(
-                                        color: AppTheme.textSecondary)))
-                            : ListView.builder(
-                                itemCount: detecciones.length,
-                                itemBuilder: (context, index) {
-                                  final deteccion = detecciones[index];
-                                  return ListTile(
-                                    leading: Icon(Icons.bug_report,
-                                        color: AppTheme.primaryBlue),
-                                    title: Text(deteccion["tipo"],
-                                        style: TextStyle(
-                                            color: AppTheme.textPrimary)),
-                                    subtitle: Text(
-                                        "Cantidad: ${deteccion["cantidad"]} | Fecha: ${deteccion["fecha"]}",
-                                        style: TextStyle(
-                                            color: AppTheme.textSecondary)),
-                                  );
-                                },
-                              ),
+                  const SizedBox(width: 16),
+
+                  // Tabla de Detecciones Recientes (1/3 del ancho)
+                  Expanded(
+                    flex: 1,
+                    child: Card(
+                      color: AppTheme.cardBackground,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Detecciones Recientes",
+                                style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.textPrimary)),
+                            const SizedBox(height: 10),
+                            Expanded(
+                              child: detecciones.isEmpty
+                                  ? Center(
+                                      child: Text("No hay datos aún...",
+                                          style: TextStyle(
+                                              color: AppTheme.textSecondary)))
+                                  : ListView.builder(
+                                      itemCount: detecciones.length,
+                                      itemBuilder: (context, index) {
+                                        final deteccion = detecciones[index];
+                                        return ListTile(
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 8.0, vertical: 0),
+                                          dense: true,
+                                          leading: Icon(Icons.bug_report,
+                                              color: AppTheme.primaryBlue,
+                                              size: 20),
+                                          title: Text(deteccion["tipo"],
+                                              style: TextStyle(
+                                                  color: AppTheme.textPrimary,
+                                                  fontSize: 14)),
+                                          subtitle: Text(
+                                              "Cantidad: ${deteccion["cantidad"]} | Fecha: ${deteccion["fecha"]}",
+                                              style: TextStyle(
+                                                  color: AppTheme.textSecondary,
+                                                  fontSize: 12)),
+                                        );
+                                      },
+                                    ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ],
