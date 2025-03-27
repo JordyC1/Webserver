@@ -49,18 +49,24 @@ class _LoginScreenState extends State<LoginScreen> {
               context, "/main"); // Redirige al dashboard
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error: ${jsonResponse['message']}")),
+            const SnackBar(
+                content: Text(
+                    "Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.")),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Error de conexión con el servidor")),
+          const SnackBar(
+              content: Text(
+                  "Error de conexión con el servidor. Por favor, intenta más tarde.")),
         );
       }
     } catch (e) {
       setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
+        const SnackBar(
+            content: Text(
+                "Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.")),
       );
     }
   }
