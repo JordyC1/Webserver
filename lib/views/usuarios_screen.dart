@@ -53,15 +53,19 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
 
   // 📌 Método para filtrar la lista de usuarios
   List<Map<String, dynamic>> _getFilteredUsuarios() {
-    return usuarios.where((user) {
+    var filteredList = usuarios.where((user) {
       final matchesSearch = _searchQuery.isEmpty ||
-          user["email"].toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          user["nombre"].toLowerCase().contains(_searchQuery.toLowerCase());
+          user["email"].toLowerCase().contains(_searchQuery.toLowerCase());
 
       final matchesRole = _selectedRole == null || user["rol"] == _selectedRole;
 
       return matchesSearch && matchesRole;
     }).toList();
+
+    // Ordenar por ID de forma ascendente
+    filteredList.sort((a, b) => a["id"].compareTo(b["id"]));
+
+    return filteredList;
   }
 
   @override
@@ -140,9 +144,16 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
               _selectedRole = value;
             });
           },
-          items: ["Admin", "Usuario"]
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
+          items: [
+            DropdownMenuItem(
+              value: null,
+              child: Text("Sin filtro",
+                  style: TextStyle(color: AppTheme.textSecondary)),
+            ),
+            ...["Admin", "Usuario"]
+                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                .toList(),
+          ],
         ),
       ],
     );
@@ -161,7 +172,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
           columnSpacing: 20,
           columns: const [
             DataColumn(label: Text("ID")),
-            DataColumn(label: Text("Nombre")),
             DataColumn(label: Text("Correo Electrónico")),
             DataColumn(label: Text("Rol")),
             DataColumn(label: Text("Acciones")),
@@ -169,7 +179,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
           rows: filteredUsuarios.map((usuario) {
             return DataRow(cells: [
               DataCell(Text(usuario["id"].toString())),
-              DataCell(Text(usuario["nombre"])),
               DataCell(Text(usuario["email"])),
               DataCell(Text(usuario["rol"])),
               DataCell(Row(
