@@ -60,8 +60,8 @@ class AlertService {
 
           if (totalInsectos > 25) {
             alertas.add(Alerta(
-              tipo: 'Alta cantidad de insectos',
-              mensaje: 'Se detectaron $totalInsectos insectos en la última captura',
+              tipo: 'Alta cantidad de insectos en la trampa',
+              mensaje: 'Se detectaron $totalInsectos insectos en la última captura se recomienda reemplazar la trampa',
               fecha: DateTime.now().toString(),
               severidad: 'alta',
             ));

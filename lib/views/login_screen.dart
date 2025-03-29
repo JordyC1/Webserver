@@ -43,31 +43,36 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (jsonResponse["success"]) {
           SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setString(
-              "token", jsonResponse["token"] ?? ""); // Guarda token o vacío
+          await prefs.setString("token", jsonResponse["token"] ?? "");
+          await prefs.setString("email", email); // ✅ Guarda el email
 
-          Navigator.pushReplacementNamed(
-              context, "/main"); // Redirige al dashboard
+          Navigator.pushReplacementNamed(context, "/main");
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text(
-                    "Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.")),
+              content: Text(
+                "Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.",
+              ),
+            ),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text(
-                  "Error de conexión con el servidor. Por favor, intenta más tarde.")),
+            content: Text(
+              "Error de conexión con el servidor. Por favor, intenta más tarde.",
+            ),
+          ),
         );
       }
     } catch (e) {
       setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text(
-                "Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.")),
+          content: Text(
+            "Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.",
+          ),
+        ),
       );
     }
   }
