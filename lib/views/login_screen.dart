@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'register_screen.dart';
+import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -16,7 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     setState(() => isLoading = true);
-    
+
     String email = emailController.text.trim();
     String password = passwordController.text.trim();
 
@@ -32,36 +33,41 @@ class _LoginScreenState extends State<LoginScreen> {
       final response = await http.post(
         Uri.parse("http://raspberrypi2.local/login.php"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "email": email,
-          "password": password
-        }),
+        body: jsonEncode({"email": email, "password": password}),
       );
 
       setState(() => isLoading = false);
 
       if (response.statusCode == 200) {
         var jsonResponse = jsonDecode(response.body);
-        
+
         if (jsonResponse["success"]) {
           SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setString("token", jsonResponse["token"] ?? ""); // Guarda token o vacío
+          await prefs.setString(
+              "token", jsonResponse["token"] ?? ""); // Guarda token o vacío
 
-          Navigator.pushReplacementNamed(context, "/main"); // Redirige al dashboard
+          Navigator.pushReplacementNamed(
+              context, "/main"); // Redirige al dashboard
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error: ${jsonResponse['message']}")),
+            const SnackBar(
+                content: Text(
+                    "Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.")),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Error de conexión con el servidor")),
+          const SnackBar(
+              content: Text(
+                  "Error de conexión con el servidor. Por favor, intenta más tarde.")),
         );
       }
     } catch (e) {
       setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
+        const SnackBar(
+            content: Text(
+                "Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.")),
       );
     }
   }
@@ -69,88 +75,121 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF3FF),
+      backgroundColor: AppTheme.backgroundColor,
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.bug_report, size: 100, color: Colors.black),
-              const SizedBox(height: 10),
-              Text(
-                "SmartTrap",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-              ),
-              const SizedBox(height: 20),
-
-              _buildTextField("Usuario/Correo Electrónico", emailController, false),
-              const SizedBox(height: 15),
-              _buildTextField("Contraseña", passwordController, true),
-              const SizedBox(height: 15),
-
-              ElevatedButton(
-                onPressed: isLoading ? null : _login,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade900,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 15),
-                ),
-                child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("Continuar", style: TextStyle(fontSize: 18, color: Colors.white)),
-              ),
-              const SizedBox(height: 20),
-
-              Row(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("¿No tienes cuenta?"),
-                  const SizedBox(width: 5),
+                  Icon(Icons.bug_report,
+                      size: 100, color: AppTheme.primaryBlue),
+                  const SizedBox(height: 10),
+                  Text(
+                    "SmartTrap",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryBlue,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                      "Usuario/Correo Electrónico", emailController, false),
+                  const SizedBox(height: 15),
+                  _buildTextField("Contraseña", passwordController, true),
+                  const SizedBox(height: 15),
+                  ElevatedButton(
+                    onPressed: isLoading ? null : _login,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryBlue,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 100, vertical: 15),
+                    ),
+                    child: isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text("Continuar",
+                            style:
+                                TextStyle(fontSize: 18, color: Colors.white)),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text("¿No tienes cuenta?",
+                          style: TextStyle(color: AppTheme.textSecondary)),
+                      const SizedBox(width: 5),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => RegisterScreen()),
+                          );
+                        },
+                        child: Text(
+                          "Regístrate aquí",
+                          style: TextStyle(
+                              color: AppTheme.primaryBlue,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => RegisterScreen()),
-                      );
-                    },
-                    child: const Text(
-                      "Regístrate aquí",
-                      style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                    onTap: () {},
+                    child: Text(
+                      "Olvidé mi contraseña",
+                      style: TextStyle(
+                          color: AppTheme.primaryBlue,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-
-              GestureDetector(
-                onTap: () {}, // Implementar recuperación de contraseña
-                child: const Text(
-                  "Olvidé mi contraseña",
-                  style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, bool isPassword) {
+  Widget _buildTextField(
+      String label, TextEditingController controller, bool isPassword) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        Text(label,
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: AppTheme.textPrimary)),
         const SizedBox(height: 5),
         TextField(
           controller: controller,
           obscureText: isPassword,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppTheme.cardBackground,
             hintText: isPassword ? "************" : "User@gmail.com",
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: AppTheme.dividerColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: AppTheme.dividerColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: AppTheme.primaryBlue),
+            ),
           ),
         ),
       ],

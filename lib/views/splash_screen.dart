@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../theme/app_theme.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
 
@@ -21,19 +22,37 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (token != null) {
       // Si hay sesión, ir al MainScreen
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MainScreen()));
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (context) => MainScreen()));
     } else {
       // Si no hay sesión, ir al LoginScreen
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginScreen()));
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (context) => LoginScreen()));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.backgroundColor,
       body: Center(
-        child: CircularProgressIndicator(),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.bug_report, size: 100, color: AppTheme.primaryBlue),
+            const SizedBox(height: 20),
+            Text(
+              "SmartTrap",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryBlue,
+              ),
+            ),
+            const SizedBox(height: 30),
+            CircularProgressIndicator(color: AppTheme.primaryBlue),
+          ],
+        ),
       ),
     );
   }

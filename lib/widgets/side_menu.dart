@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class SideMenu extends StatelessWidget {
   final Function(int) onItemTapped;
@@ -8,22 +9,23 @@ class SideMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
+      backgroundColor: AppTheme.backgroundColor,
       child: Column(
         children: <Widget>[
           // Encabezado del Menú
           DrawerHeader(
-            decoration: const BoxDecoration(
-              color: Color(0xFFF5F7FA),
+            decoration: BoxDecoration(
+              color: AppTheme.backgroundColor,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.bug_report, size: 50, color: Colors.black),
+                Icon(Icons.bug_report, size: 50, color: AppTheme.primaryBlue),
                 const SizedBox(height: 10),
                 Text(
                   'SmartTrap',
                   style: TextStyle(
-                    color: Colors.blue.shade900,
+                    color: AppTheme.primaryBlue,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
@@ -31,7 +33,7 @@ class SideMenu extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Opciones del Menú
           _buildMenuItem(Icons.dashboard, 'Dashboard', 0),
           _buildMenuItem(Icons.people, 'Usuarios', 1),
@@ -46,8 +48,9 @@ class SideMenu extends StatelessWidget {
   // Método para construir un ítem del menú
   Widget _buildMenuItem(IconData icon, String title, int index) {
     return ListTile(
-      leading: Icon(icon, color: Colors.black87),
-      title: Text(title, style: const TextStyle(fontSize: 16)),
+      leading: Icon(icon, color: AppTheme.primaryBlue),
+      title: Text(title,
+          style: TextStyle(fontSize: 16, color: AppTheme.textPrimary)),
       onTap: () {
         onItemTapped(index);
       },
