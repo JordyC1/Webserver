@@ -32,7 +32,7 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
       if (response.statusCode == 200) {
         usuarios = List<Map<String, dynamic>>.from(jsonDecode(response.body));
       } else {
-        print("Error al obtener los usuarios: ${response.statusCode}");
+        print("Error al obtener los usuarios: \${response.statusCode}");
       }
     });
   }
@@ -47,7 +47,7 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     if (response.statusCode == 200) {
       _fetchUsuarios(); // Recargar datos tras eliminar usuario
     } else {
-      print("Error al eliminar usuario: ${response.statusCode}");
+      print("Error al eliminar usuario: \${response.statusCode}");
     }
   }
 
@@ -181,21 +181,11 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
               DataCell(Text(usuario["id"].toString())),
               DataCell(Text(usuario["email"])),
               DataCell(Text(usuario["rol"])),
-              DataCell(Row(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.edit, color: AppTheme.primaryBlue),
-                    onPressed: () {
-                      // Implementar función de editar usuario
-                    },
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.delete, color: Colors.redAccent),
-                    onPressed: () {
-                      _confirmDelete(usuario["id"]);
-                    },
-                  ),
-                ],
+              DataCell(IconButton(
+                icon: Icon(Icons.delete, color: Colors.redAccent),
+                onPressed: () {
+                  _confirmDelete(usuario["id"]);
+                },
               )),
             ]);
           }).toList(),
