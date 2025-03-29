@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 
 class UsuariosScreen extends StatefulWidget {
@@ -13,14 +14,20 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
   bool _isLoading = false;
   String _searchQuery = "";
   String? _selectedRole;
+  String? _currentEmail;
 
   @override
   void initState() {
     super.initState();
-    _fetchUsuarios();
+    _loadEmailAndFetchUsuarios();
   }
 
-  // 📌 Método para obtener los usuarios desde PHP
+  Future<void> _loadEmailAndFetchUsuarios() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    _currentEmail = prefs.getString("email");
+    await _fetchUsuarios();
+  }
+
   Future<void> _fetchUsuarios() async {
     setState(() => _isLoading = true);
 
@@ -32,12 +39,11 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
       if (response.statusCode == 200) {
         usuarios = List<Map<String, dynamic>>.from(jsonDecode(response.body));
       } else {
-        print("Error al obtener los usuarios: \${response.statusCode}");
+        print("Error al obtener los usuarios: ${response.statusCode}");
       }
     });
   }
 
-  // 📌 Método para eliminar usuario
   Future<void> _deleteUsuario(String userId) async {
     final response = await http.post(
       Uri.parse("http://raspberrypi2.local/delete_usuario.php"),
@@ -45,13 +51,12 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     );
 
     if (response.statusCode == 200) {
-      _fetchUsuarios(); // Recargar datos tras eliminar usuario
+      _fetchUsuarios();
     } else {
-      print("Error al eliminar usuario: \${response.statusCode}");
+      print("Error al eliminar usuario: ${response.statusCode}");
     }
   }
 
-  // 📌 Método para filtrar la lista de usuarios
   List<Map<String, dynamic>> _getFilteredUsuarios() {
     var filteredList = usuarios.where((user) {
       final matchesSearch = _searchQuery.isEmpty ||
@@ -62,9 +67,7 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
       return matchesSearch && matchesRole;
     }).toList();
 
-    // Ordenar por ID de forma ascendente
     filteredList.sort((a, b) => a["id"].compareTo(b["id"]));
-
     return filteredList;
   }
 
@@ -93,27 +96,24 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
             _buildSearchAndFilters(),
             const SizedBox(height: 10),
             Expanded(
-                child:
-                    _isLoading ? _buildLoadingIndicator() : _buildUserTable()),
-            _buildAddUserButton(),
+              child: _isLoading ? _buildLoadingIndicator() : _buildUserTable(),
+            ),
+            if (_currentEmail == "admin@admin.com") _buildAddUserButton(),
           ],
         ),
       ),
     );
   }
 
-  // 📌 Indicador de carga
   Widget _buildLoadingIndicator() {
     return const Center(
       child: CircularProgressIndicator(),
     );
   }
 
-  // 📌 Barra de búsqueda y filtro por rol
   Widget _buildSearchAndFilters() {
     return Row(
       children: [
-        // Buscar por nombre o correo
         Expanded(
           child: TextField(
             decoration: InputDecoration(
@@ -133,8 +133,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
           ),
         ),
         const SizedBox(width: 10),
-
-        // Filtro por rol
         DropdownButton<String>(
           hint: Text("Filtrar por rol",
               style: TextStyle(color: AppTheme.textSecondary)),
@@ -159,7 +157,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     );
   }
 
-  // 📌 Construcción de la tabla de usuarios
   Widget _buildUserTable() {
     List<Map<String, dynamic>> filteredUsuarios = _getFilteredUsuarios();
 
@@ -181,12 +178,16 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
               DataCell(Text(usuario["id"].toString())),
               DataCell(Text(usuario["email"])),
               DataCell(Text(usuario["rol"])),
-              DataCell(IconButton(
-                icon: Icon(Icons.delete, color: Colors.redAccent),
-                onPressed: () {
-                  _confirmDelete(usuario["id"]);
-                },
-              )),
+              DataCell(
+                _currentEmail == "admin@admin.com"
+                    ? IconButton(
+                        icon: Icon(Icons.delete, color: Colors.redAccent),
+                        onPressed: () {
+                          _confirmDelete(usuario["id"]);
+                        },
+                      )
+                    : const SizedBox(),
+              ),
             ]);
           }).toList(),
         ),
@@ -194,13 +195,12 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     );
   }
 
-  // 📌 Botón para agregar usuario
   Widget _buildAddUserButton() {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: ElevatedButton.icon(
         onPressed: () {
-          // Implementar función de agregar usuario
+          // Funcionalidad para agregar usuario
         },
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text("Agregar Usuario",
@@ -215,7 +215,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     );
   }
 
-  // 📌 Confirmar eliminación de usuario
   void _confirmDelete(String userId) {
     showDialog(
       context: context,

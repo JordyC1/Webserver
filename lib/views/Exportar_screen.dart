@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../theme/app_theme.dart';
+import 'package:intl/intl.dart';
 import 'dart:html' as html;
 
 class ExportarScreen extends StatefulWidget {
@@ -13,59 +14,177 @@ class _ExportarScreenState extends State<ExportarScreen> {
   bool _isLoading = false;
   String _lastExportTime = "";
 
-  Future<void> _exportarDatos(String tipo) async {
+  DateTime? _fechaInicio;
+  DateTime? _fechaFin;
+
+  Future<void> _exportarAlertas() async {
     setState(() => _isLoading = true);
 
     try {
-      late http.Response response;
-      late String fileName;
-      late Map<String, dynamic> jsonData;
-
-      switch (tipo) {
-        case 'usuarios':
-          response = await http
-              .get(Uri.parse("http://raspberrypi2.local/get_usuarios.php"));
-          fileName = "usuarios_export.json";
-          break;
-        case 'lecturas':
-          response = await http
-              .get(Uri.parse("http://raspberrypi2.local/get_lecturas.php"));
-          fileName = "lecturas_export.json";
-          break;
-        case 'alertas':
-          // Para alertas, generamos los datos localmente ya que son calculados
-          final lecturasResponse = await http
-              .get(Uri.parse("http://raspberrypi2.local/get_lecturas.php"));
-          if (lecturasResponse.statusCode == 200) {
-            List<Map<String, dynamic>> alertas =
-                await _generarAlertas(lecturasResponse.body);
-            jsonData = {"alertas": alertas};
-            fileName = "alertas_export.json";
-            _descargarArchivo(jsonEncode(jsonData), fileName);
-            _actualizarTiempoExportacion();
-            setState(() => _isLoading = false);
-            return;
-          }
-          break;
-      }
-
-      if (response.statusCode == 200) {
-        _descargarArchivo(response.body, fileName);
+      final lecturasResponse =
+          await http.get(Uri.parse("http://raspberrypi2.local/get_lecturas.php"));
+      if (lecturasResponse.statusCode == 200) {
+        List<Map<String, dynamic>> alertas =
+            await _generarAlertas(lecturasResponse.body);
+        final jsonData = {"alertas": alertas};
+        _descargarArchivo(jsonEncode(jsonData), "alertas_export.json");
         _actualizarTiempoExportacion();
       } else {
-        throw Exception('Error al obtener datos: ${response.statusCode}');
+        throw Exception("Error al obtener lecturas");
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error al exportar datos: $e")),
+        SnackBar(content: Text("Error al exportar alertas: $e")),
       );
     }
 
     setState(() => _isLoading = false);
   }
 
-  Future<List<Map<String, dynamic>>> _generarAlertas(
-      String lecturasJson) async {
+  Future<void> _exportarLecturasFiltradas() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final response =
+          await http.get(Uri.parse("http://raspberrypi2.local/get_lecturas.php"));
+
+      if (response.statusCode == 200) {
+        List<dynamic> lecturas = jsonDecode(response.body);
+
+        if (_fechaInicio != null && _fechaFin != null) {
+          lecturas = lecturas.where((lectura) {
+            final fecha = DateTime.parse(lectura['fecha']);
+            return fecha.isAfter(_fechaInicio!) && fecha.isBefore(_fechaFin!);
+          }).toList();
+        }
+
+        _descargarArchivo(jsonEncode({"lecturas": lecturas}), "lecturas_export.json");
+        _actualizarTiempoExportacion();
+      } else {
+        throw Exception("Error al obtener lecturas");
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al exportar lecturas: $e")),
+      );
+    }
+
+    setState(() => _isLoading = false);
+  }
+
+  void _mostrarFiltroExportacionLecturas() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.cardBackground,
+              title: Text("Filtrar Exportación de Lecturas",
+                  style: TextStyle(color: AppTheme.textPrimary)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.calendar_today,
+                        color: AppTheme.primaryBlue),
+                    title: Text(
+                      _fechaInicio == null
+                          ? "Selecciona fecha y hora de inicio"
+                          : "Inicio: ${DateFormat('dd/MM/yyyy HH:mm:ss').format(_fechaInicio!)}",
+                      style: TextStyle(color: AppTheme.textPrimary),
+                    ),
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now().subtract(Duration(days: 1)),
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now(),
+                      );
+                      if (date != null) {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (time != null) {
+                          setState(() {
+                            _fechaInicio = DateTime(
+                                date.year, date.month, date.day, time.hour, time.minute);
+                          });
+                        }
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading:
+                        Icon(Icons.calendar_month, color: AppTheme.primaryBlue),
+                    title: Text(
+                      _fechaFin == null
+                          ? "Selecciona fecha y hora de fin"
+                          : "Fin: ${DateFormat('dd/MM/yyyy HH:mm:ss').format(_fechaFin!)}",
+                      style: TextStyle(color: AppTheme.textPrimary),
+                    ),
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now(),
+                      );
+                      if (date != null) {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (time != null) {
+                          setState(() {
+                            _fechaFin = DateTime(
+                                date.year, date.month, date.day, time.hour, time.minute);
+                          });
+                        }
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  child:
+                      Text("Cancelar", style: TextStyle(color: AppTheme.primaryBlue)),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryBlue),
+                  onPressed: () {
+                    if (_fechaInicio == null || _fechaFin == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Debes seleccionar ambas fechas")),
+                      );
+                      return;
+                    }
+                    if (_fechaInicio!.isAfter(_fechaFin!)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(
+                                "La fecha de inicio no puede ser posterior a la de fin")),
+                      );
+                      return;
+                    }
+                    Navigator.pop(context);
+                    _exportarLecturasFiltradas();
+                  },
+                  child: Text("Exportar"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _generarAlertas(String lecturasJson) async {
     List<Map<String, dynamic>> alertas = [];
     List<Map<String, dynamic>> lecturas =
         List<Map<String, dynamic>>.from(jsonDecode(lecturasJson));
@@ -80,7 +199,6 @@ class _ExportarScreenState extends State<ExportarScreen> {
       return alertas;
     }
 
-    // Verificar última captura
     int maxCapturaId = lecturas
         .map((l) => int.parse(l['captura_id'].toString()))
         .reduce((a, b) => a > b ? a : b);
@@ -101,7 +219,6 @@ class _ExportarScreenState extends State<ExportarScreen> {
       });
     }
 
-    // Verificar última lectura
     var ultimaLectura = lecturas.reduce((a, b) =>
         DateTime.parse(a['fecha']).isAfter(DateTime.parse(b['fecha'])) ? a : b);
     var diferencia =
@@ -116,7 +233,6 @@ class _ExportarScreenState extends State<ExportarScreen> {
       });
     }
 
-    // Verificar capturas sin detección
     var capturasUnicas = lecturas.map((l) => l['captura_id']).toSet().toList();
     for (var capturaId in capturasUnicas) {
       var lecturasCaptura =
@@ -149,17 +265,17 @@ class _ExportarScreenState extends State<ExportarScreen> {
     final now = DateTime.now();
     setState(() {
       _lastExportTime =
-          "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+           "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
     });
   }
 
-  Widget _buildExportCard(
-      String titulo, String descripcion, IconData icono, String tipo) {
+  Widget _buildExportCard(String titulo, String descripcion, IconData icono,
+      {VoidCallback? onTap}) {
     return Card(
       color: AppTheme.cardBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: InkWell(
-        onTap: () => _exportarDatos(tipo),
+        onTap: onTap,
         borderRadius: BorderRadius.circular(15),
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -168,24 +284,17 @@ class _ExportarScreenState extends State<ExportarScreen> {
             children: [
               Icon(icono, size: 48, color: AppTheme.primaryBlue),
               const SizedBox(height: 16),
-              Text(
-                titulo,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-                textAlign: TextAlign.center,
-              ),
+              Text(titulo,
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary),
+                  textAlign: TextAlign.center),
               const SizedBox(height: 8),
-              Text(
-                descripcion,
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
+              Text(descripcion,
+                  style:
+                      TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                  textAlign: TextAlign.center),
             ],
           ),
         ),
@@ -243,19 +352,37 @@ class _ExportarScreenState extends State<ExportarScreen> {
                         "Usuarios",
                         "Exportar lista de usuarios y sus roles",
                         Icons.people,
-                        'usuarios',
+                        onTap: () async {
+                          setState(() => _isLoading = true);
+                          try {
+                            final response = await http.get(Uri.parse(
+                                "http://raspberrypi2.local/get_usuarios.php"));
+                            if (response.statusCode == 200) {
+                              _descargarArchivo(
+                                  response.body, "usuarios_export.json");
+                              _actualizarTiempoExportacion();
+                            }
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content:
+                                      Text("Error al exportar usuarios: $e")),
+                            );
+                          }
+                          setState(() => _isLoading = false);
+                        },
                       ),
                       _buildExportCard(
                         "Lecturas",
                         "Exportar historial de lecturas y detecciones",
                         Icons.analytics,
-                        'lecturas',
+                        onTap: _mostrarFiltroExportacionLecturas,
                       ),
                       _buildExportCard(
                         "Alertas",
                         "Exportar registro de alertas generadas",
                         Icons.warning,
-                        'alertas',
+                        onTap: _exportarAlertas,
                       ),
                     ],
                   ),
