@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'views/login_screen.dart';
 import 'views/main_screen.dart';
 import 'views/splash_screen.dart'; // Nueva pantalla de carga
