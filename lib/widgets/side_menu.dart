@@ -40,6 +40,7 @@ class SideMenu extends StatelessWidget {
           _buildMenuItem(Icons.library_books, 'Ver Lecturas', 2),
           _buildMenuItem(Icons.notifications, 'Alertas', 3),
           _buildMenuItem(Icons.exit_to_app, 'Exportar', 4),
+          _buildMenuItem(Icons.content_paste_search, 'Auditorias Imagenes', 5),
         ],
       ),
     );

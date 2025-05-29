@@ -7,6 +7,7 @@ import 'ver_lecturas.dart';
 import 'usuarios_screen.dart'; // ✅ Importamos la nueva pantalla
 import 'alertas_screen.dart'; // Importar la nueva pantalla
 import 'exportar_screen.dart';
+import 'auditoriascreen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -25,6 +26,7 @@ class _MainScreenState extends State<MainScreen> {
     VerLecturasScreen(),
     AlertasScreen(), // Agregar la pantalla de alertas
     ExportarScreen(), // Agregar la nueva pantalla
+    AuditoriaScreen(),
   ];
 
   void _onItemTapped(int index) {
