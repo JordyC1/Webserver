@@ -17,6 +17,9 @@ class _AuditoriaScreenState extends State<AuditoriaScreen> {
   int? imagenActualIndex;
   List<String> imagenesSeleccionadas = [];
 
+  int imagenesPorPagina = 10;
+  int paginaActual = 0;
+
   final String baseUrl = 'http://raspberrypi2.local/auditoria/auditoria';
 
   @override
@@ -30,7 +33,7 @@ class _AuditoriaScreenState extends State<AuditoriaScreen> {
       isLoading = true;
       horaSeleccionada = null;
       imagenesSeleccionadas = [];
-      imagenesPorHora = {}; // Limpiar antes de cargar nueva fecha
+      imagenesPorHora = {};
     });
 
     final fechaStr = _formatoFecha(selectedDate);
@@ -60,8 +63,7 @@ class _AuditoriaScreenState extends State<AuditoriaScreen> {
     setState(() => isLoading = false);
   }
 
-  String _formatoFecha(DateTime fecha) =>
-      "${fecha.year}-${_twoDigits(fecha.month)}-${_twoDigits(fecha.day)}";
+  String _formatoFecha(DateTime fecha) => "${fecha.year}-${_twoDigits(fecha.month)}-${_twoDigits(fecha.day)}";
 
   String _twoDigits(int n) => n.toString().padLeft(2, '0');
 
@@ -77,7 +79,7 @@ class _AuditoriaScreenState extends State<AuditoriaScreen> {
       setState(() {
         selectedDate = fecha;
       });
-      await _cargarImagenes(); // Esperar para evitar errores de UI con datos viejos
+      await _cargarImagenes();
     }
   }
 
@@ -154,6 +156,12 @@ class _AuditoriaScreenState extends State<AuditoriaScreen> {
     );
   }
 
+  List<String> _obtenerPaginaActual(List<String> todas) {
+    final inicio = paginaActual * imagenesPorPagina;
+    final fin = (inicio + imagenesPorPagina).clamp(0, todas.length);
+    return todas.sublist(inicio, fin);
+  }
+
   @override
   Widget build(BuildContext context) {
     final fechaTexto = _formatoFecha(selectedDate);
@@ -161,6 +169,7 @@ class _AuditoriaScreenState extends State<AuditoriaScreen> {
     final imagenesMostrar = horaSeleccionada != null
         ? imagenesPorHora[horaSeleccionada]?.cast<String>() ?? []
         : [];
+    final imagenesPagina = _obtenerPaginaActual(imagenesMostrar.cast<String>());
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -204,18 +213,48 @@ class _AuditoriaScreenState extends State<AuditoriaScreen> {
                                 label: Text("Hora: $hora:00"),
                                 selected: seleccionada,
                                 selectedColor: AppTheme.primaryBlue,
-                                onSelected: (_) => setState(() => horaSeleccionada = hora),
+                                onSelected: (_) => setState(() {
+                                  horaSeleccionada = hora;
+                                  paginaActual = 0;
+                                }),
                               ),
                             );
                           }).toList(),
                         ),
                       ),
                     ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text("Mostrando ${imagenesPagina.length} de ${imagenesMostrar.length}",
+                              style: TextStyle(color: AppTheme.textSecondary)),
+                          DropdownButton<int>(
+                            value: imagenesPorPagina,
+                            dropdownColor: AppTheme.cardBackground,
+                            items: [5, 10, 15]
+                                .map((e) => DropdownMenuItem(
+                                      value: e,
+                                      child: Text("$e por página",
+                                          style: TextStyle(color: AppTheme.textPrimary)),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                imagenesPorPagina = value!;
+                                paginaActual = 0;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Expanded(
                       child: GridView.builder(
                         padding: const EdgeInsets.all(12),
-                        itemCount: imagenesMostrar.length,
+                        itemCount: imagenesPagina.length,
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: MediaQuery.of(context).size.width ~/ 150,
                           crossAxisSpacing: 8,
@@ -223,7 +262,7 @@ class _AuditoriaScreenState extends State<AuditoriaScreen> {
                           childAspectRatio: 1.5,
                         ),
                         itemBuilder: (context, index) {
-                          final nombre = imagenesMostrar[index];
+                          final nombre = imagenesPagina[index];
                           final hora = horaSeleccionada!;
                           final url = "$baseUrl/$fechaTexto/$hora/$nombre";
                           final horaTexto = nombre
@@ -233,7 +272,7 @@ class _AuditoriaScreenState extends State<AuditoriaScreen> {
                               .replaceAll("-", ":");
 
                           return InkWell(
-                            onTap: () => _abrirImagenModal(index, imagenesMostrar.cast<String>()),
+                            onTap: () => _abrirImagenModal(index, imagenesPagina.cast<String>()),
                             hoverColor: Colors.transparent,
                             mouseCursor: SystemMouseCursors.click,
                             child: Stack(
@@ -259,6 +298,31 @@ class _AuditoriaScreenState extends State<AuditoriaScreen> {
                         },
                       ),
                     ),
+                    if (imagenesMostrar.length > imagenesPorPagina)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.arrow_back, color: AppTheme.primaryBlue),
+                              onPressed: paginaActual > 0
+                                  ? () => setState(() => paginaActual--)
+                                  : null,
+                            ),
+                            Text(
+                              "Página ${paginaActual + 1} de ${(imagenesMostrar.length / imagenesPorPagina).ceil()}",
+                              style: TextStyle(color: AppTheme.textSecondary),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.arrow_forward, color: AppTheme.primaryBlue),
+                              onPressed: (paginaActual + 1) * imagenesPorPagina < imagenesMostrar.length
+                                  ? () => setState(() => paginaActual++)
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
     );
