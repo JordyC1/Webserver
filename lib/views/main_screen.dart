@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/user_menu.dart';
 import '../theme/app_theme.dart';
 import 'dashboard_screen.dart';
 import 'ver_lecturas.dart';
-import 'usuarios_screen.dart'; // ✅ Importamos la nueva pantalla
-import 'alertas_screen.dart'; // Importar la nueva pantalla
+import 'usuarios_screen.dart';
+import 'alertas_screen.dart';
 import 'exportar_screen.dart';
 import 'auditoriascreen.dart';
 
@@ -18,27 +19,44 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  bool isHovered = false; // Controla el efecto hover
+  bool isHovered = false;
+  String _nombreUsuario = '';
+  String _correoUsuario = '';
 
   final List<Widget> _pages = [
     DashboardScreen(),
-    UsuariosScreen(), // ✅ Se agregó la pantalla de administración de usuarios
+    UsuariosScreen(),
     VerLecturasScreen(),
-    AlertasScreen(), // Agregar la pantalla de alertas
-    ExportarScreen(), // Agregar la nueva pantalla
+    AlertasScreen(),
+    ExportarScreen(),
     AuditoriaScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarDatosUsuario();
+  }
+
+  Future<void> _cargarDatosUsuario() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _correoUsuario = prefs.getString("email") ?? '';
+      _nombreUsuario = prefs.getString("nombre") ?? ''; // asegúrate de guardar esto al iniciar sesión
+    });
+  }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-      Navigator.pop(
-          context); // Cierra el Drawer después de seleccionar una opción
+      Navigator.pop(context); // Cierra el Drawer
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    String saludo = "Bienvenido, ${_nombreUsuario.isNotEmpty ? _nombreUsuario : _correoUsuario}";
+
     return Scaffold(
       drawer: SideMenu(onItemTapped: _onItemTapped),
       appBar: AppBar(
@@ -49,19 +67,32 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             Text("SmartTrap", style: TextStyle(color: AppTheme.textPrimary)),
 
-            // Efecto hover en el icono de usuario
-            MouseRegion(
-              onEnter: (_) => setState(() => isHovered = true),
-              onExit: (_) => setState(() => isHovered = false),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isHovered ? AppTheme.dividerColor : Colors.transparent,
+            Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 10.0),
+                  child: Text(
+                    saludo,
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
-                padding: const EdgeInsets.all(5),
-                child: const UserMenu(), // Usa el menú emergente de usuario
-              ),
+                MouseRegion(
+                  onEnter: (_) => setState(() => isHovered = true),
+                  onExit: (_) => setState(() => isHovered = false),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isHovered ? AppTheme.dividerColor : Colors.transparent,
+                    ),
+                    padding: const EdgeInsets.all(5),
+                    child: const UserMenu(),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

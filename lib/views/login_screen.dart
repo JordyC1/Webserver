@@ -14,6 +14,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool isLoading = false;
+  bool isHovering = false; // ✅ Controlador para el hover
 
   Future<void> _login() async {
     setState(() => isLoading = true);
@@ -44,7 +45,12 @@ class _LoginScreenState extends State<LoginScreen> {
         if (jsonResponse["success"]) {
           SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString("token", jsonResponse["token"] ?? "");
-          await prefs.setString("email", email); // ✅ Guarda el email
+          await prefs.setString("email", email);
+
+          // ✅ También guarda el nombre si lo devuelve el backend
+          if (jsonResponse.containsKey("nombre")) {
+            await prefs.setString("nombre", jsonResponse["nombre"]);
+          }
 
           Navigator.pushReplacementNamed(context, "/main");
         } else {
@@ -102,8 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _buildTextField(
-                      "Usuario/Correo Electrónico", emailController, false),
+                  _buildTextField("Usuario/Correo Electrónico", emailController, false),
                   const SizedBox(height: 15),
                   _buildTextField("Contraseña", passwordController, true),
                   const SizedBox(height: 15),
@@ -123,39 +128,41 @@ class _LoginScreenState extends State<LoginScreen> {
                                 TextStyle(fontSize: 18, color: Colors.white)),
                   ),
                   const SizedBox(height: 20),
+
+                  // ✅ Sección con hover en "Regístrate aquí"
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text("¿No tienes cuenta?",
                           style: TextStyle(color: AppTheme.textSecondary)),
                       const SizedBox(width: 5),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => RegisterScreen()),
-                          );
-                        },
-                        child: Text(
-                          "Regístrate aquí",
-                          style: TextStyle(
-                              color: AppTheme.primaryBlue,
-                              fontWeight: FontWeight.bold),
+                      MouseRegion(
+                        onEnter: (_) => setState(() => isHovering = true),
+                        onExit: (_) => setState(() => isHovering = false),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => RegisterScreen()),
+                            );
+                          },
+                          child: Text(
+                            "Regístrate aquí",
+                            style: TextStyle(
+                              color: isHovering
+                                  ? AppTheme.primaryBlue.withOpacity(0.7)
+                                  : AppTheme.primaryBlue,
+                              fontWeight: FontWeight.bold,
+                              decoration:
+                                  isHovering ? TextDecoration.underline : null,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: () {},
-                    child: Text(
-                      "Olvidé mi contraseña",
-                      style: TextStyle(
-                          color: AppTheme.primaryBlue,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
+
+                  // ❌ Eliminado el texto "Olvidé mi contraseña"
                 ],
               ),
             ),
