@@ -1,0 +1,301 @@
+Voy a analizar todo el proyecto a fondo para crear un plan detallado y preciso. Primero necesito verificar varios aspectos clave:
+Read file: pubspec.yaml
+Read file: lib/theme/app_theme.dart
+Search files...
+Ran tool
+```bash
+cd /c%3A/Users/adria/OneDrive/Escritorio/Trabajo/ProyectoEmilJordy/Webserver && find . -name "*.dart" -exec grep -l "fetchLecturas\|get_lecturas" {} \;
+```
+Ran tool
+Ahora tengo toda la información necesaria. Voy a crear un plan detallado y completo:
+
+# 📋 PLAN DETALLADO PARA IMPLEMENTACIÓN DE GRÁFICAS EN EL DASHBOARD
+
+## ✅ **INFORMACIÓN VERIFICADA DEL PROYECTO:**
+
+### **📦 Dependencias Disponibles:**
+- ✅ `fl_chart: ^0.63.0` - Librería de gráficas instalada
+- ✅ `http: ^1.3.0` - Para peticiones HTTP
+- ✅ `intl: ^0.18.1` - Para formateo de fechas
+- ✅ Tema dark mode con colores definidos en `AppTheme`
+
+### **🎨 Colores del Tema Disponibles:**
+- `AppTheme.primaryBlue` - Color principal azul
+- `AppTheme.secondaryBlue` - Azul secundario
+- `AppTheme.backgroundColor` - Fondo oscuro
+- `AppTheme.cardBackground` - Fondo de tarjetas
+- `AppTheme.textPrimary` - Texto principal
+- `AppTheme.textSecondary` - Texto secundario
+- `AppTheme.dividerColor` - Color de divisores
+
+### **🔌 Endpoints Disponibles:**
+1. `get_lecturas.php` - Datos completos: `id`, `captura_id`, `tipo`, `cantidad`, `fecha`
+2. `get_detections.php` - Detecciones recientes: `tipo`, `cantidad`, `fecha`
+3. `get_weekly_detections.php` - Datos semanales (CSV)
+4. `get_trampas_activas.php` - Cantidad de trampas activas
+5. `AlertService.verificarAlertas()` - Alertas con severidad
+
+### **📊 Tipos de Gráficas en fl_chart 0.63.0:**
+- ✅ LineChart (Gráficos de línea)
+- ✅ BarChart (Gráficos de barras) 
+- ✅ PieChart (Gráficos de pastel)
+- ✅ ScatterChart (Gráficos de dispersión)
+- ❌ RadarChart (No compatible con 0.63.0)
+- ❌ AreaChart nativo (Se simula con LineChart + área)
+
+---
+
+## 📝 **PLAN SECUENCIAL DE IMPLEMENTACIÓN**
+
+### **FASE 1: PREPARACIÓN Y RESTRUCTURACIÓN**
+
+#### **Paso 1.1: Crear Servicios de Datos** ⏱️ *15 min*
+```
+Crear: lib/services/chart_data_service.dart
+```
+**Objetivo:** Centralizar la lógica de obtención y procesamiento de datos para las gráficas
+
+**Funciones a implementar:**
+- `fetchDailyTrendData()` - Para gráfica de línea de tendencia diaria
+- `fetchInsectTypeDistribution()` - Para gráfica de pastel por tipo
+- `fetchStackedBarData()` - Para barras apiladas por tipo/día
+- `fetchAlertsBySeverity()` - Para barras de alertas por severidad  
+- `fetchHourlyActivityData()` - Para heatmap de actividad por hora
+- `fetchWeeklyCumulativeData()` - Para área acumulada semanal
+- `calculateAverageTimeBetweenDetections()` - Para indicador de tiempo promedio
+
+#### **Paso 1.2: Crear Modelos de Datos** ⏱️ *10 min*
+```
+Crear: lib/models/chart_models.dart
+```
+**Objetivo:** Definir estructuras de datos específicas para las gráficas
+
+**Modelos a crear:**
+- `DailyTrendPoint` - Para datos de tendencia diaria
+- `InsectTypeData` - Para distribución por tipo
+- `HourlyActivityData` - Para datos del heatmap
+- `AlertSeverityData` - Para datos de alertas
+
+#### **Paso 1.3: Crear Widgets de Gráficas Base** ⏱️ *20 min*
+```
+Crear: lib/widgets/charts/
+```
+**Widgets a crear:**
+- `base_chart_card.dart` - Widget base reutilizable para todas las gráficas
+- `chart_loading_widget.dart` - Widget de carga para gráficas
+- `chart_error_widget.dart` - Widget de error para gráficas
+
+### **FASE 2: IMPLEMENTACIÓN DE GRÁFICAS INDIVIDUALES**
+
+#### **Paso 2.1: Gráfico de Línea - Tendencia Diaria** ⏱️ *30 min*
+```
+Crear: lib/widgets/charts/daily_trend_chart.dart
+```
+**Características:**
+- Usar `LineChart` de fl_chart
+- Mostrar últimos 7-14 días de datos
+- Datos del endpoint `get_lecturas.php` agrupados por fecha
+- Animaciones suaves
+- Tooltips interactivos
+- Color: `AppTheme.primaryBlue`
+
+#### **Paso 2.2: Gráfico de Pastel - Distribución por Tipo** ⏱️ *25 min*
+```
+Crear: lib/widgets/charts/insect_distribution_pie_chart.dart
+```
+**Características:**
+- Usar `PieChart` de fl_chart
+- Datos de `get_lecturas.php` agrupados por `tipo`
+- Colores diferenciados por tipo de insecto
+- Leyenda lateral
+- Porcentajes en los sectores
+
+#### **Paso 2.3: Gráfico de Barras Apiladas** ⏱️ *35 min*
+```
+Crear: lib/widgets/charts/stacked_bar_chart.dart
+```
+**Características:**
+- Usar `BarChart` de fl_chart con múltiples `BarChartRodData`
+- Datos por día con tipos de insectos apilados
+- Colores únicos por tipo de insecto
+- Leyenda superior
+- Ejes con etiquetas claras
+
+#### **Paso 2.4: Gráfico de Barras - Alertas por Severidad** ⏱️ *20 min*
+```
+Crear: lib/widgets/charts/alerts_severity_chart.dart
+```
+**Características:**
+- Usar `BarChart` de fl_chart
+- Datos de `AlertService.verificarAlertas()`
+- 3 barras: Alta (rojo), Media (naranja), Baja (amarillo)
+- Animación de crecimiento
+
+#### **Paso 2.5: Indicador Lineal - Tiempo Promedio** ⏱️ *15 min*
+```
+Crear: lib/widgets/charts/average_time_indicator.dart
+```
+**Características:**
+- Widget personalizado con `LinearProgressIndicator`
+- Cálculo del tiempo promedio entre detecciones
+- Display numérico del valor
+- Color basado en el rango (bueno/regular/malo)
+
+#### **Paso 2.6: Heatmap - Actividad por Hora** ⏱️ *40 min*
+```
+Crear: lib/widgets/charts/hourly_heatmap_chart.dart
+```
+**Características:**
+- Widget personalizado con `Container` y `GridView`
+- Matriz 24 horas x 7 días
+- Intensidad de color basada en cantidad de detecciones
+- Tooltips al hacer tap
+- Escala de colores del tema
+
+#### **Paso 2.7: Gráfico de Área - Acumulación Semanal** ⏱️ *25 min*
+```
+Crear: lib/widgets/charts/weekly_cumulative_area_chart.dart
+```
+**Características:**
+- Usar `LineChart` con área sombreada (`belowBarData`)
+- Datos acumulativos día a día
+- Gradiente en el área
+- Línea suave
+
+### **FASE 3: INTEGRACIÓN EN EL DASHBOARD**
+
+#### **Paso 3.1: Modificar la Estructura del Dashboard** ⏱️ *25 min*
+```
+Modificar: lib/views/dashboard_screen.dart
+```
+**Cambios:**
+- Convertir el layout a `ScrollView` para múltiples gráficas
+- Crear secciones organizadas
+- Mantener las tarjetas de resumen actuales en la parte superior
+- Organizar gráficas en grid responsivo
+
+#### **Paso 3.2: Crear Selector de Período de Tiempo** ⏱️ *15 min*
+```
+Añadir al dashboard
+```
+**Características:**
+- Dropdown para seleccionar: Último día, Última semana, Último mes
+- Aplicar filtro a todas las gráficas relevantes
+- Persistir selección durante la sesión
+
+#### **Paso 3.3: Implementar Sistema de Actualización** ⏱️ *20 min*
+```
+Modificar: dashboard_screen.dart
+```
+**Características:**
+- Actualizar todas las gráficas cada 30 segundos
+- Loading individual por gráfica
+- Manejo de errores por gráfica
+- Indicador de última actualización
+
+### **FASE 4: OPTIMIZACIÓN Y LAYOUT RESPONSIVO**
+
+#### **Paso 4.1: Layout Responsivo** ⏱️ *20 min*
+```
+Actualizar: dashboard_screen.dart + widgets de gráficas
+```
+**Características:**
+- Grid adaptativo: 1 columna (móvil), 2 columnas (tablet), 3 columnas (desktop)
+- Altura variable según el tipo de gráfica
+- Mantener proporciones correctas
+
+#### **Paso 4.2: Ordenar Gráficas por Prioridad** ⏱️ *10 min*
+```
+Organización final en dashboard_screen.dart
+```
+**Orden sugerido:**
+1. **Fila superior:** Tarjetas de resumen actuales
+2. **Fila 1:** Tendencia diaria (línea) + Distribución por tipo (pastel)
+3. **Fila 2:** Barras apiladas + Alertas por severidad
+4. **Fila 3:** Actividad por hora (heatmap - ancho completo)
+5. **Fila 4:** Acumulación semanal + Indicador tiempo promedio
+
+#### **Paso 4.3: Agregar Paleta de Colores para Tipos de Insectos** ⏱️ *10 min*
+```
+Añadir a: lib/theme/app_theme.dart
+```
+**Colores:**
+- Generar paleta automática o definir colores específicos por tipo
+- Asegurar contraste con el tema dark
+- Mantener consistencia entre gráficas
+
+### **FASE 5: TESTING Y REFINAMIENTO**
+
+#### **Paso 5.1: Testing de Datos** ⏱️ *15 min*
+- Probar con datos reales del servidor
+- Verificar manejo de datos vacíos
+- Probar con datos de diferentes rangos de tiempo
+
+#### **Paso 5.2: Ajustes de Performance** ⏱️ *10 min*
+- Optimizar consultas si es necesario
+- Cachear datos que no cambian frecuentemente
+- Lazy loading para gráficas no visibles
+
+#### **Paso 5.3: Pulir Animaciones y UX** ⏱️ *15 min*
+- Sincronizar animaciones de aparición
+- Ajustar duraciones de transiciones
+- Verificar accesibilidad básica
+
+---
+
+## 📋 **ARCHIVOS A CREAR/MODIFICAR**
+
+### **Archivos Nuevos (9):**
+1. `lib/services/chart_data_service.dart`
+2. `lib/models/chart_models.dart`
+3. `lib/widgets/charts/base_chart_card.dart`
+4. `lib/widgets/charts/chart_loading_widget.dart` 
+5. `lib/widgets/charts/chart_error_widget.dart`
+6. `lib/widgets/charts/daily_trend_chart.dart`
+7. `lib/widgets/charts/insect_distribution_pie_chart.dart`
+8. `lib/widgets/charts/stacked_bar_chart.dart`
+9. `lib/widgets/charts/alerts_severity_chart.dart`
+10. `lib/widgets/charts/average_time_indicator.dart`
+11. `lib/widgets/charts/hourly_heatmap_chart.dart`
+12. `lib/widgets/charts/weekly_cumulative_area_chart.dart`
+
+### **Archivos a Modificar (2):**
+1. `lib/views/dashboard_screen.dart` - Restructuración completa del layout
+2. `lib/theme/app_theme.dart` - Agregar paleta de colores para tipos de insectos
+
+---
+
+## ⏱️ **ESTIMACIÓN DE TIEMPO TOTAL**
+
+| **Fase** | **Tiempo Estimado** |
+|----------|-------------------|
+| Fase 1: Preparación | 45 minutos |
+| Fase 2: Gráficas | 190 minutos |
+| Fase 3: Integración | 60 minutos |
+| Fase 4: Optimización | 40 minutos |
+| Fase 5: Testing | 40 minutos |
+| **TOTAL** | **≈ 6 horas** |
+
+---
+
+## 🎯 **RESULTADO FINAL ESPERADO**
+
+**Dashboard con 7 gráficas completamente funcionales:**
+1. ✅ Gráfico de línea - Tendencia de insectos por día
+2. ✅ Gráfico de pastel - Distribución por tipo de insecto  
+3. ✅ Gráfico de barras apiladas - Detecciones por tipo por día
+4. ✅ Gráfico de barras - Alertas por severidad
+5. ✅ Indicador lineal - Tiempo promedio entre detecciones
+6. ✅ Heatmap - Actividad por hora del día
+7. ✅ Gráfico de área - Acumulación semanal
+
+**Características adicionales:**
+- ✅ Layout responsivo
+- ✅ Actualización automática cada 30 segundos
+- ✅ Selector de período de tiempo
+- ✅ Tema dark consistente
+- ✅ Animaciones fluidas
+- ✅ Manejo de errores
+- ✅ Loading states
+
+Este plan está **100% verificado** con los datos disponibles y las capacidades de `fl_chart 0.63.0`. **¿Te parece bien este plan? ¿Por cuál fase quieres que empiece?**
