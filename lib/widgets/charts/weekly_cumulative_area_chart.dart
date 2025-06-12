@@ -8,11 +8,13 @@ import 'base_chart_card.dart';
 class WeeklyCumulativeAreaChart extends StatefulWidget {
   final double? height;
   final bool showDailyValues;
+  final int days;
 
   const WeeklyCumulativeAreaChart({
     Key? key,
     this.height,
     this.showDailyValues = true,
+    this.days = 7,
   }) : super(key: key);
 
   @override
@@ -48,6 +50,14 @@ class _WeeklyCumulativeAreaChartState extends State<WeeklyCumulativeAreaChart>
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(WeeklyCumulativeAreaChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.days != widget.days) {
+      _loadData();
+    }
+  }
+
   Future<void> _loadData() async {
     setState(() {
       isLoading = true;
@@ -55,7 +65,8 @@ class _WeeklyCumulativeAreaChartState extends State<WeeklyCumulativeAreaChart>
     });
 
     try {
-      final response = await ChartDataService.fetchWeeklyCumulativeData();
+      final response =
+          await ChartDataService.fetchWeeklyCumulativeData(days: widget.days);
 
       if (response.success && response.data != null) {
         setState(() {
@@ -79,9 +90,18 @@ class _WeeklyCumulativeAreaChartState extends State<WeeklyCumulativeAreaChart>
 
   @override
   Widget build(BuildContext context) {
+    String titulo = widget.days == 1
+        ? 'Acumulación de Detecciones del Día'
+        : widget.days == 7
+            ? 'Acumulación Semanal de Detecciones'
+            : 'Acumulación de Detecciones de ${widget.days} Días';
+
+    String subtitulo =
+        widget.days == 1 ? 'Progreso horario del día' : 'Progreso día a día';
+
     return BaseChartCard(
-      title: 'Acumulación Semanal de Detecciones',
-      subtitle: 'Progreso día a día',
+      title: titulo,
+      subtitle: subtitulo,
       height: widget.height ?? 320,
       isLoading: isLoading,
       errorMessage: errorMessage,

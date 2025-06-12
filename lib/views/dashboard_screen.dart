@@ -12,8 +12,8 @@ import '../widgets/charts/stacked_bar_chart.dart';
 import '../widgets/charts/alerts_severity_chart.dart';
 import '../widgets/charts/average_time_indicator.dart';
 import '../widgets/charts/weekly_cumulative_area_chart.dart';
-// ✅ Activar heatmap para la Fase 4 - placeholder por ahora
-// import '../widgets/charts/hourly_heatmap_chart.dart';
+// ✅ Heatmap ACTIVADO - Import directo
+import '../widgets/charts/hourly_heatmap_chart.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -505,25 +505,27 @@ class _DashboardScreenState extends State<DashboardScreen>
   // 📈 Fila 1: Tendencia diaria + Distribución por tipo
   Widget _buildResponsiveRow1(bool isDesktop, bool isTablet, bool isMobile) {
     if (isMobile) {
-      // Móvil: columnas apiladas
+      // Móvil: columnas apiladas - alturas aumentadas
       return Column(
         children: [
-          DailyTrendChart(days: _getDaysFromPeriod(), height: 300),
+          DailyTrendChart(days: _getDaysFromPeriod(), height: 380),
           const SizedBox(height: 16),
-          InsectDistributionPieChart(days: _getDaysFromPeriod(), height: 300),
+          InsectDistributionPieChart(days: _getDaysFromPeriod(), height: 380),
         ],
       );
     } else {
-      // Tablet y Desktop: 2 columnas
+      // Tablet y Desktop: 2 columnas - alturas aumentadas
+      double chartHeight = isDesktop ? 380 : 360;
       return Row(
         children: [
           Expanded(
-            child: DailyTrendChart(days: _getDaysFromPeriod(), height: 280),
+            child: DailyTrendChart(
+                days: _getDaysFromPeriod(), height: chartHeight),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: InsectDistributionPieChart(
-                days: _getDaysFromPeriod(), height: 280),
+                days: _getDaysFromPeriod(), height: chartHeight),
           ),
         ],
       );
@@ -533,141 +535,99 @@ class _DashboardScreenState extends State<DashboardScreen>
   // 📊 Fila 2: Barras apiladas + Alertas por severidad
   Widget _buildResponsiveRow2(bool isDesktop, bool isTablet, bool isMobile) {
     if (isMobile) {
-      // Móvil: columnas apiladas
+      // Móvil: columnas apiladas - alturas aumentadas
       return Column(
         children: [
-          StackedBarChart(days: _getDaysFromPeriod(), height: 320),
+          StackedBarChart(days: _getDaysFromPeriod(), height: 400),
           const SizedBox(height: 16),
-          AlertsSeverityChart(height: 300),
+          AlertsSeverityChart(height: 380),
         ],
       );
     } else {
-      // Tablet y Desktop: 2 columnas
+      // Tablet y Desktop: 2 columnas - alturas aumentadas
+      double chartHeight = isDesktop ? 380 : 360;
       return Row(
         children: [
           Expanded(
-            child: StackedBarChart(days: _getDaysFromPeriod(), height: 300),
+            child: StackedBarChart(
+                days: _getDaysFromPeriod(), height: chartHeight),
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: AlertsSeverityChart(height: 300),
+            child: AlertsSeverityChart(height: chartHeight),
           ),
         ],
       );
     }
   }
 
-  // 🔥 Fila 3: Heatmap (ancho completo) - Placeholder temporal
+  // 🔥 Fila 3: Heatmap (ancho completo) - ACTIVADO Y FUNCIONANDO
   Widget _buildResponsiveHeatmapRow(
       bool isDesktop, bool isTablet, bool isMobile) {
     double heatmapHeight = isDesktop
-        ? 450
+        ? 550
         : isTablet
-            ? 400
-            : 350;
+            ? 500
+            : 450;
 
-    return Card(
-      color: AppTheme.cardBackground,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Container(
-        height: heatmapHeight,
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text(
-              'Actividad por Hora del Día',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.analytics,
-                      size: 64,
-                      color: AppTheme.primaryBlue,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Heatmap - Layout Responsivo Implementado',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                    Text(
-                      'Altura adaptativa: ${heatmapHeight.toInt()}px',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return HourlyHeatmapChart(
+      days: _getDaysFromPeriod(),
+      height: heatmapHeight,
+      showLabels: true,
     );
   }
 
   // 📈 Fila 4: Acumulación semanal + Indicador tiempo promedio
   Widget _buildResponsiveRow4(bool isDesktop, bool isTablet, bool isMobile) {
     if (isMobile) {
-      // Móvil: columnas apiladas
+      // Móvil: columnas apiladas - alturas aumentadas (+50px tiempo promedio)
       return Column(
         children: [
-          WeeklyCumulativeAreaChart(height: 300),
+          WeeklyCumulativeAreaChart(days: _getDaysFromPeriod(), height: 380),
           const SizedBox(height: 16),
-          AverageTimeIndicator(days: _getDaysFromPeriod(), height: 200),
+          AverageTimeIndicator(days: _getDaysFromPeriod(), height: 330),
           const SizedBox(height: 16),
-          _buildDetectionsTableCard(height: 250),
+          _buildDetectionsTableCard(height: 320),
         ],
       );
     } else if (isTablet) {
-      // Tablet: 2 columnas, tabla abajo
+      // Tablet: 2 columnas, tabla abajo - alturas aumentadas (+50px tiempo promedio)
       return Column(
         children: [
           Row(
             children: [
               Expanded(
-                child: WeeklyCumulativeAreaChart(height: 320),
+                child: WeeklyCumulativeAreaChart(
+                    days: _getDaysFromPeriod(), height: 400),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: AverageTimeIndicator(
-                    days: _getDaysFromPeriod(), height: 320),
+                    days: _getDaysFromPeriod(), height: 450),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          _buildDetectionsTableCard(height: 200),
+          _buildDetectionsTableCard(height: 280),
         ],
       );
     } else {
-      // Desktop: acumulación semanal arriba, indicador + tabla abajo
+      // Desktop: acumulación semanal arriba, indicador + tabla abajo - alturas aumentadas (+50px tiempo promedio)
       return Column(
         children: [
-          WeeklyCumulativeAreaChart(height: 320),
+          WeeklyCumulativeAreaChart(days: _getDaysFromPeriod(), height: 400),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 flex: 2,
                 child: AverageTimeIndicator(
-                    days: _getDaysFromPeriod(), height: 250),
+                    days: _getDaysFromPeriod(), height: 370),
               ),
               const SizedBox(width: 16),
               Expanded(
                 flex: 3,
-                child: _buildDetectionsTableCard(height: 250),
+                child: _buildDetectionsTableCard(height: 320),
               ),
             ],
           ),

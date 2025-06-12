@@ -48,6 +48,14 @@ class _DailyTrendChartState extends State<DailyTrendChart>
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(DailyTrendChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.days != widget.days) {
+      _loadData();
+    }
+  }
+
   Future<void> _loadData() async {
     setState(() {
       isLoading = true;
@@ -94,10 +102,70 @@ class _DailyTrendChartState extends State<DailyTrendChart>
 
   Widget _buildChart() {
     if (chartData == null || chartData!.isEmpty) {
-      return const Center(
-        child: Text(
-          'No hay datos disponibles',
-          style: TextStyle(color: AppTheme.textSecondary),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.bug_report_outlined,
+              size: 48,
+              color: AppTheme.textSecondary.withOpacity(0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No hay datos disponibles',
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No se encontraron detecciones\nen el período seleccionado',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.textSecondary.withOpacity(0.7),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 📊 Verificar si todos los valores son cero
+    final hasAnyDetections = chartData!.any((point) => point.totalInsectos > 0);
+
+    if (!hasAnyDetections) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.notifications_off_outlined,
+              size: 48,
+              color: AppTheme.textSecondary.withOpacity(0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Sin detecciones',
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No se registraron insectos\nen los últimos ${widget.days} días',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.textSecondary.withOpacity(0.7),
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -267,6 +335,10 @@ class _DailyTrendChartState extends State<DailyTrendChart>
 
   double _getMinY() {
     if (chartData == null || chartData!.isEmpty) return 0;
+
+    final hasAnyDetections = chartData!.any((point) => point.totalInsectos > 0);
+    if (!hasAnyDetections) return 0;
+
     final minValue =
         chartData!.map((e) => e.totalInsectos).reduce((a, b) => a < b ? a : b);
     return (minValue - (minValue * 0.1)).clamp(0, double.infinity);
@@ -274,15 +346,110 @@ class _DailyTrendChartState extends State<DailyTrendChart>
 
   double _getMaxY() {
     if (chartData == null || chartData!.isEmpty) return 10;
+
+    final hasAnyDetections = chartData!.any((point) => point.totalInsectos > 0);
+    if (!hasAnyDetections) return 10; // Valor mínimo para mostrar grid
+
     final maxValue =
         chartData!.map((e) => e.totalInsectos).reduce((a, b) => a > b ? a : b);
-    return maxValue + (maxValue * 0.1);
+
+    // Asegurar que siempre hay un rango mínimo visible
+    final adjustedMax = maxValue + (maxValue * 0.1);
+    return adjustedMax < 1 ? 10 : adjustedMax;
   }
 
   Widget _buildStats() {
     if (chartData == null || chartData!.isEmpty) return const SizedBox.shrink();
 
     final total = chartData!.fold(0, (sum, point) => sum + point.totalInsectos);
+
+    // 📊 Manejar caso cuando no hay detecciones
+    if (total == 0) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBackground.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: AppTheme.textSecondary.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Column(
+              children: [
+                Text(
+                  '0',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Total',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary.withOpacity(0.7),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              width: 1,
+              height: 30,
+              color: AppTheme.textSecondary.withOpacity(0.2),
+            ),
+            Column(
+              children: [
+                Text(
+                  '0.0',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Promedio',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary.withOpacity(0.7),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              width: 1,
+              height: 30,
+              color: AppTheme.textSecondary.withOpacity(0.2),
+            ),
+            Column(
+              children: [
+                Text(
+                  'N/A',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Pico',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary.withOpacity(0.7),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
     final average = total / chartData!.length;
     final maxValue =
         chartData!.map((e) => e.totalInsectos).reduce((a, b) => a > b ? a : b);

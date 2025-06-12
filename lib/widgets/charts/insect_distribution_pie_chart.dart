@@ -50,6 +50,14 @@ class _InsectDistributionPieChartState extends State<InsectDistributionPieChart>
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(InsectDistributionPieChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.days != widget.days) {
+      _loadData();
+    }
+  }
+
   Future<void> _loadData() async {
     setState(() {
       isLoading = true;
@@ -107,50 +115,36 @@ class _InsectDistributionPieChartState extends State<InsectDistributionPieChart>
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
-        return Row(
-          children: [
-            // Gráfico de pastel
-            Expanded(
-              flex: widget.showLegend ? 3 : 1,
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: PieChart(
-                  PieChartData(
-                    sections: _buildSections(),
-                    borderData: FlBorderData(show: false),
-                    sectionsSpace: 2,
-                    centerSpaceRadius: 40,
-                    startDegreeOffset: -90,
-                    pieTouchData: PieTouchData(
-                      enabled: true,
-                      touchCallback:
-                          (FlTouchEvent event, PieTouchResponse? response) {
-                        if (event is FlTapUpEvent &&
-                            response != null &&
-                            response.touchedSection != null) {
-                          setState(() {
-                            touchedIndex =
-                                response.touchedSection!.touchedSectionIndex;
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                  swapAnimationDuration: const Duration(milliseconds: 600),
-                  swapAnimationCurve: Curves.easeInOutQuint,
+        // Solo mostrar el gráfico de pastel sin leyenda lateral
+        return Center(
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: PieChart(
+              PieChartData(
+                sections: _buildSections(),
+                borderData: FlBorderData(show: false),
+                sectionsSpace: 2,
+                centerSpaceRadius: 40,
+                startDegreeOffset: -90,
+                pieTouchData: PieTouchData(
+                  enabled: true,
+                  touchCallback:
+                      (FlTouchEvent event, PieTouchResponse? response) {
+                    if (event is FlTapUpEvent &&
+                        response != null &&
+                        response.touchedSection != null) {
+                      setState(() {
+                        touchedIndex =
+                            response.touchedSection!.touchedSectionIndex;
+                      });
+                    }
+                  },
                 ),
               ),
+              swapAnimationDuration: const Duration(milliseconds: 600),
+              swapAnimationCurve: Curves.easeInOutQuint,
             ),
-
-            // Leyenda lateral (solo si showLegend es true)
-            if (widget.showLegend) ...[
-              const SizedBox(width: 16),
-              Expanded(
-                flex: 2,
-                child: _buildSideLegend(),
-              ),
-            ],
-          ],
+          ),
         );
       },
     );

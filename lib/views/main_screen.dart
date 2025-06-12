@@ -7,6 +7,7 @@ import 'dashboard_screen.dart';
 import 'ver_lecturas.dart';
 import 'usuarios_screen.dart';
 import 'alertas_screen.dart';
+import 'historial_alertas_screen.dart';
 import 'exportar_screen.dart';
 import 'auditoriascreen.dart';
 
@@ -28,6 +29,7 @@ class _MainScreenState extends State<MainScreen> {
     UsuariosScreen(),
     VerLecturasScreen(),
     AlertasScreen(),
+    HistorialAlertasScreen(),
     ExportarScreen(),
     AuditoriaScreen(),
   ];
@@ -42,7 +44,8 @@ class _MainScreenState extends State<MainScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _correoUsuario = prefs.getString("email") ?? '';
-      _nombreUsuario = prefs.getString("nombre") ?? ''; // asegúrate de guardar esto al iniciar sesión
+      _nombreUsuario = prefs.getString("nombre") ??
+          ''; // asegúrate de guardar esto al iniciar sesión
     });
   }
 
@@ -55,7 +58,8 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    String saludo = "Bienvenido, ${_nombreUsuario.isNotEmpty ? _nombreUsuario : _correoUsuario}";
+    String saludo =
+        "Bienvenido, ${_nombreUsuario.isNotEmpty ? _nombreUsuario : _correoUsuario}";
 
     return Scaffold(
       drawer: SideMenu(onItemTapped: _onItemTapped),
@@ -66,7 +70,6 @@ class _MainScreenState extends State<MainScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text("SmartTrap", style: TextStyle(color: AppTheme.textPrimary)),
-
             Row(
               children: [
                 Padding(
@@ -86,7 +89,9 @@ class _MainScreenState extends State<MainScreen> {
                     duration: const Duration(milliseconds: 200),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isHovered ? AppTheme.dividerColor : Colors.transparent,
+                      color: isHovered
+                          ? AppTheme.dividerColor
+                          : Colors.transparent,
                     ),
                     padding: const EdgeInsets.all(5),
                     child: const UserMenu(),

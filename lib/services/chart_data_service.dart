@@ -11,7 +11,9 @@ class ChartDataService {
   static Future<ChartDataResponse<List<DailyTrendPoint>>> fetchDailyTrendData(
       {int days = 14}) async {
     try {
-      final response = await http.get(Uri.parse("$baseUrl/get_lecturas.php"));
+      final response = await http
+          .get(Uri.parse("$baseUrl/get_lecturas.php"))
+          .timeout(Duration(seconds: 15));
 
       if (response.statusCode != 200) {
         return ChartDataResponse.error(
@@ -74,7 +76,9 @@ class ChartDataService {
   static Future<ChartDataResponse<List<InsectTypeData>>>
       fetchInsectTypeDistribution({int days = 30}) async {
     try {
-      final response = await http.get(Uri.parse("$baseUrl/get_lecturas.php"));
+      final response = await http
+          .get(Uri.parse("$baseUrl/get_lecturas.php"))
+          .timeout(Duration(seconds: 15));
 
       if (response.statusCode != 200) {
         return ChartDataResponse.error(
@@ -152,7 +156,9 @@ class ChartDataService {
   static Future<ChartDataResponse<List<StackedBarData>>> fetchStackedBarData(
       {int days = 7}) async {
     try {
-      final response = await http.get(Uri.parse("$baseUrl/get_lecturas.php"));
+      final response = await http
+          .get(Uri.parse("$baseUrl/get_lecturas.php"))
+          .timeout(Duration(seconds: 15));
 
       if (response.statusCode != 200) {
         return ChartDataResponse.error(
@@ -267,7 +273,9 @@ class ChartDataService {
   static Future<ChartDataResponse<List<HourlyActivityData>>>
       fetchHourlyActivityData({int days = 14}) async {
     try {
-      final response = await http.get(Uri.parse("$baseUrl/get_lecturas.php"));
+      final response = await http
+          .get(Uri.parse("$baseUrl/get_lecturas.php"))
+          .timeout(Duration(seconds: 15));
 
       if (response.statusCode != 200) {
         return ChartDataResponse.error(
@@ -342,9 +350,11 @@ class ChartDataService {
 
   // 📈 Obtener datos acumulativos semanales
   static Future<ChartDataResponse<List<WeeklyCumulativeData>>>
-      fetchWeeklyCumulativeData() async {
+      fetchWeeklyCumulativeData({int days = 7}) async {
     try {
-      final response = await http.get(Uri.parse("$baseUrl/get_lecturas.php"));
+      final response = await http
+          .get(Uri.parse("$baseUrl/get_lecturas.php"))
+          .timeout(Duration(seconds: 15));
 
       if (response.statusCode != 200) {
         return ChartDataResponse.error(
@@ -358,10 +368,10 @@ class ChartDataService {
         return ChartDataResponse.success(<WeeklyCumulativeData>[]);
       }
 
-      // Obtener última semana (7 días)
+      // Obtener últimos N días en lugar de solo 7
       final now = DateTime.now();
-      final startDate =
-          DateTime(now.year, now.month, now.day).subtract(Duration(days: 6));
+      final startDate = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: days - 1));
 
       // Agrupar por fecha
       Map<String, int> cantidadPorFecha = {};
@@ -383,11 +393,11 @@ class ChartDataService {
         }
       }
 
-      // Crear datos acumulativos
+      // Crear datos acumulativos para el número de días especificado
       List<WeeklyCumulativeData> datosAcumulativos = [];
       int acumulado = 0;
 
-      for (int i = 0; i < 7; i++) {
+      for (int i = 0; i < days; i++) {
         final fecha = startDate.add(Duration(days: i));
         final fechaKey = DateFormat('yyyy-MM-dd').format(fecha);
         final cantidadDiaria = cantidadPorFecha[fechaKey] ?? 0;
@@ -412,7 +422,9 @@ class ChartDataService {
   static Future<ChartDataResponse<AverageTimeIndicator>>
       calculateAverageTimeBetweenDetections({int days = 7}) async {
     try {
-      final response = await http.get(Uri.parse("$baseUrl/get_lecturas.php"));
+      final response = await http
+          .get(Uri.parse("$baseUrl/get_lecturas.php"))
+          .timeout(Duration(seconds: 15));
 
       if (response.statusCode != 200) {
         return ChartDataResponse.error(

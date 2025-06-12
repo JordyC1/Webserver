@@ -60,6 +60,14 @@ class _AverageTimeIndicatorState extends State<AverageTimeIndicator>
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(AverageTimeIndicator oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.days != widget.days) {
+      _loadData();
+    }
+  }
+
   Future<void> _loadData() async {
     setState(() {
       isLoading = true;

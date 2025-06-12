@@ -50,6 +50,14 @@ class _StackedBarChartState extends State<StackedBarChart>
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(StackedBarChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.days != widget.days) {
+      _loadData();
+    }
+  }
+
   Future<void> _loadData() async {
     setState(() {
       isLoading = true;
