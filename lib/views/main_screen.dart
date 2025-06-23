@@ -10,6 +10,7 @@ import 'alertas_screen.dart';
 import 'historial_alertas_screen.dart';
 import 'exportar_screen.dart';
 import 'auditoriascreen.dart';
+import 'ver_capturas.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -28,10 +29,11 @@ class _MainScreenState extends State<MainScreen> {
     DashboardScreen(),
     UsuariosScreen(),
     VerLecturasScreen(),
-    AlertasScreen(),
+   // AlertasScreen(),
     HistorialAlertasScreen(),
     ExportarScreen(),
     AuditoriaScreen(),
+    VerCapturasScreen(),
   ];
 
   @override

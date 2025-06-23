@@ -10,7 +10,8 @@ class SideMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Drawer(
       backgroundColor: AppTheme.backgroundColor,
-      child: Column(
+      child: ListView(
+        padding: EdgeInsets.zero,
         children: <Widget>[
           // Encabezado del Menú
           DrawerHeader(
@@ -34,14 +35,33 @@ class SideMenu extends StatelessWidget {
             ),
           ),
 
-          // Opciones del Menú
+          // Menú principal
           _buildMenuItem(Icons.dashboard, 'Dashboard', 0),
           _buildMenuItem(Icons.people, 'Usuarios', 1),
-          _buildMenuItem(Icons.library_books, 'Ver Lecturas', 2),
-          _buildMenuItem(Icons.notifications, 'Alertas', 3),
-          _buildMenuItem(Icons.history, 'Historial de Alertas', 4),
-          _buildMenuItem(Icons.exit_to_app, 'Exportar', 5),
-          _buildMenuItem(Icons.content_paste_search, 'Auditorias Imagenes', 6),
+
+          // Menú expandible de Lecturas
+            ExpansionTile(
+              leading: Icon(Icons.library_books, color: AppTheme.primaryBlue),
+              title: Text('Lecturas', style: TextStyle(fontSize: 16, color: AppTheme.textPrimary)),
+              children: [
+                ListTile(
+                  leading: Icon(Icons.bug_report_outlined, color: AppTheme.primaryBlue),
+                  contentPadding: const EdgeInsets.only(left: 40.0),
+                  title: Text('Por Detección', style: TextStyle(fontSize: 14, color: AppTheme.textPrimary)),
+                  onTap: () => onItemTapped(2),
+                ),
+                ListTile(
+                  leading: Icon(Icons.photo_camera, color: AppTheme.primaryBlue),
+                  contentPadding: const EdgeInsets.only(left: 40.0),
+                  title: Text('Por Captura', style: TextStyle(fontSize: 14, color: AppTheme.textPrimary)),
+                  onTap: () => onItemTapped(6),
+                ),
+              ],
+            ),
+
+          _buildMenuItem(Icons.notifications, 'Historial de Alertas', 3),
+          _buildMenuItem(Icons.exit_to_app, 'Exportar', 4),
+          _buildMenuItem(Icons.content_paste_search, 'Auditorias Imagenes', 5),
         ],
       ),
     );
