@@ -11,8 +11,10 @@ class VerLecturasScreen extends StatefulWidget {
 
 class _VerLecturasScreenState extends State<VerLecturasScreen> {
   List<Map<String, dynamic>> lecturas = [];
+  List<String> tiposInsectos = [];
+  String? _selectedTipoInsecto;
   int _currentPage = 1;
-  int _itemsPerPage = 9;
+  int _itemsPerPage = 8;
   String? _selectedSort;
   String? _selectedFilterDate;
   bool _isLoading = false;
@@ -23,6 +25,7 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
   @override
   void initState() {
     super.initState();
+    _fetchTiposInsectos();
     _fetchLecturas();
     _updateTime();
 
@@ -45,6 +48,18 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
       lastUpdateTime =
           "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
     });
+  }
+
+  Future<void> _fetchTiposInsectos() async {
+    final response = await http.get(Uri.parse("http://raspberrypi2.local/get_tipos_insectos.php"));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data["status"] == "ok") {
+        setState(() {
+          tiposInsectos = ["Todas", ...List<String>.from(data["tipos"])];
+        });
+      }
+    }
   }
 
   Future<void> _fetchLecturas() async {
@@ -98,7 +113,7 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
             Wrap(
               spacing: 20,
               runSpacing: 10,
-              children: [_buildFilterDropdown(), _buildSortDropdown()],
+              children: [_buildFilterDropdown(), _buildSortDropdown(), _buildTipoDropdown()],
             ),
             const SizedBox(height: 10),
             Expanded(
@@ -129,7 +144,7 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
           _applyFilters();
         });
       },
-      items: ["Hoy", "Última Semana", "Último Mes"]
+      items: ["Todas", "Hoy", "Última Semana", "Último Mes"]
           .map((e) => DropdownMenuItem(value: e, child: Text(e)))
           .toList(),
     );
@@ -154,6 +169,23 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
         "Cantidad Ascendente",
         "Cantidad Descendente"
       ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+    );
+  }
+
+  Widget _buildTipoDropdown() {
+    return DropdownButton<String>(
+      hint: Text("Filtrar por Tipo", style: TextStyle(color: AppTheme.textSecondary)),
+      value: _selectedTipoInsecto,
+      dropdownColor: AppTheme.cardBackground,
+      style: TextStyle(color: AppTheme.textPrimary),
+      icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryBlue),
+      onChanged: (value) {
+        setState(() {
+          _selectedTipoInsecto = value;
+          _applyFilters();
+        });
+      },
+      items: tiposInsectos.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
     );
   }
 
@@ -248,7 +280,7 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
     setState(() {
       var filteredLecturas = List<Map<String, dynamic>>.from(lecturas);
 
-      if (_selectedFilterDate != null) {
+      if (_selectedFilterDate != null && _selectedFilterDate != "Todas") {
         DateTime now = DateTime.now();
         DateTime filterDate;
 
@@ -273,6 +305,10 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
             return false;
           }
         }).toList();
+      }
+
+      if (_selectedTipoInsecto != null && _selectedTipoInsecto != "Todas") {
+        filteredLecturas = filteredLecturas.where((lectura) => lectura["tipo"] == _selectedTipoInsecto).toList();
       }
 
       if (_selectedSort != null) {

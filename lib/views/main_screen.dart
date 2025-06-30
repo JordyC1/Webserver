@@ -68,19 +68,33 @@ class _MainScreenState extends State<MainScreen> {
       appBar: AppBar(
         backgroundColor: AppTheme.cardBackground,
         iconTheme: IconThemeData(color: AppTheme.textPrimary),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text("SmartTrap", style: TextStyle(color: AppTheme.textPrimary)),
-            Row(
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            return Row(
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 10.0),
+                Expanded(
                   child: Text(
-                    saludo,
+                    "SmartTrap",
                     style: TextStyle(
                       color: AppTheme.textPrimary,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        saludo,
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 ),
@@ -100,8 +114,8 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                 ),
               ],
-            ),
-          ],
+            );
+          },
         ),
         elevation: 0,
       ),

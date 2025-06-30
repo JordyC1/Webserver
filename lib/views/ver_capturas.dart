@@ -11,10 +11,12 @@ class VerCapturasScreen extends StatefulWidget {
 
 class _VerCapturasScreenState extends State<VerCapturasScreen> {
   List<Map<String, dynamic>> capturas = [];
+  List<int> trampasDisponibles = [];
   int _currentPage = 1;
   int _itemsPerPage = 8;
   String? _selectedSort;
   String? _selectedFilterDate;
+  int? _selectedTrampaId;
   bool _isLoading = false;
   Timer? _timer;
   String lastUpdateTime = "";
@@ -24,6 +26,7 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
   void initState() {
     super.initState();
     _fetchCapturas();
+    _fetchTrampasDisponibles();
     _updateTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _fetchCapturas();
@@ -65,6 +68,15 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
     }
   }
 
+  Future<void> _fetchTrampasDisponibles() async {
+    final response = await http.get(Uri.parse("http://raspberrypi2.local/get_trampas_disponibles.php"));
+    if (response.statusCode == 200) {
+      setState(() {
+        trampasDisponibles = List<int>.from(jsonDecode(response.body));
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -78,7 +90,10 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
           IconButton(
             icon: Icon(Icons.refresh, color: AppTheme.primaryBlue),
             tooltip: "Actualizar datos",
-            onPressed: _fetchCapturas,
+            onPressed: () {
+              _fetchCapturas();
+              _fetchTrampasDisponibles();
+            },
           ),
         ],
       ),
@@ -97,7 +112,7 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
             Wrap(
               spacing: 20,
               runSpacing: 10,
-              children: [_buildFilterDropdown(), _buildSortDropdown()],
+              children: [_buildFilterDropdown(), _buildTrampaDropdown(), _buildSortDropdown()],
             ),
             const SizedBox(height: 10),
             Expanded(
@@ -108,6 +123,28 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTrampaDropdown() {
+    return DropdownButton<int?>(
+      hint: Text("Filtrar por Trampa", style: TextStyle(color: AppTheme.textSecondary)),
+      value: _selectedTrampaId,
+      dropdownColor: AppTheme.cardBackground,
+      style: TextStyle(color: AppTheme.textPrimary),
+      icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryBlue),
+      onChanged: (value) {
+        setState(() {
+          _selectedTrampaId = value;
+          _applyFilters();
+        });
+      },
+      items: [null, ...trampasDisponibles].map((id) {
+        return DropdownMenuItem(
+          value: id,
+          child: Text(id == null ? "Todas" : "Trampa ID $id"),
+        );
+      }).toList(),
     );
   }
 
@@ -294,6 +331,10 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
             return false;
           }
         }).toList();
+      }
+
+      if (_selectedTrampaId != null) {
+        filtered = filtered.where((c) => c["trampa_id"] == _selectedTrampaId).toList();
       }
 
       if (_selectedSort != null) {
