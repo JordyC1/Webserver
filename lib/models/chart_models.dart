@@ -168,7 +168,7 @@ class HourlyActivityData {
   final int hora; // 0-23
   final int diaSemana; // 0-6 (Lunes=0, Domingo=6)
   final int cantidad;
-  final double intensidad; // 0.0-1.0 normalizada
+  double intensidad; // 0.0-1.0 normalizada
 
   HourlyActivityData({
     required this.hora,

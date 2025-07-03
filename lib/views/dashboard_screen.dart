@@ -129,14 +129,24 @@ class _DashboardScreenState extends State<DashboardScreen>
   // 👇 Nuevo: obtener la cantidad de alertas activas desde el servicio
   Future<void> fetchAlertCount() async {
     try {
-      final fetchedAlertas = await AlertService.verificarAlertas();
-      setState(() {
-        alertasActivas = fetchedAlertas.length;
-      });
+      final response = await http.get(Uri.parse('http://raspberrypi2.local/get_alertas_historial.php'));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        int total = (data['alta'] ?? 0) + (data['media'] ?? 0) + (data['baja'] ?? 0);
+
+        setState(() {
+          alertasActivas = total;
+        });
+      } else {
+        print("Error HTTP al obtener alertas: ${response.statusCode}");
+      }
     } catch (e) {
       print("Error al obtener alertas: $e");
     }
   }
+
 
   void _updateTime() {
     final now = DateTime.now();

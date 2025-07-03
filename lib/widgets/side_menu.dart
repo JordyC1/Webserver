@@ -37,7 +37,7 @@ class SideMenu extends StatelessWidget {
 
           // Menú principal
           _buildMenuItem(Icons.dashboard, 'Dashboard', 0),
-          _buildMenuItem(Icons.people, 'Usuarios', 1),
+         // _buildMenuItem(Icons.people, 'Usuarios', 1),
 
           // Menú expandible de Lecturas
             ExpansionTile(
@@ -48,20 +48,21 @@ class SideMenu extends StatelessWidget {
                   leading: Icon(Icons.bug_report_outlined, color: AppTheme.primaryBlue),
                   contentPadding: const EdgeInsets.only(left: 40.0),
                   title: Text('Por Detección', style: TextStyle(fontSize: 14, color: AppTheme.textPrimary)),
-                  onTap: () => onItemTapped(2),
+                  onTap: () => onItemTapped(1),
                 ),
                 ListTile(
                   leading: Icon(Icons.photo_camera, color: AppTheme.primaryBlue),
                   contentPadding: const EdgeInsets.only(left: 40.0),
                   title: Text('Por Captura', style: TextStyle(fontSize: 14, color: AppTheme.textPrimary)),
-                  onTap: () => onItemTapped(6),
+                  onTap: () => onItemTapped(5),
                 ),
               ],
             ),
 
-          _buildMenuItem(Icons.notifications, 'Historial de Alertas', 3),
-          _buildMenuItem(Icons.exit_to_app, 'Exportar', 4),
-          _buildMenuItem(Icons.content_paste_search, 'Auditorias Imagenes', 5),
+          _buildMenuItem(Icons.notifications, 'Historial de Alertas', 2),
+          _buildMenuItem(Icons.exit_to_app, 'Exportar', 3),
+          _buildMenuItem(Icons.content_paste_search, 'Auditorias Imagenes', 4),
+          _buildMenuItem(Icons.build, 'Mantenimiento', 6),
         ],
       ),
     );

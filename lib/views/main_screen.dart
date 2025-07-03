@@ -7,6 +7,7 @@ import 'dashboard_screen.dart';
 import 'ver_lecturas.dart';
 import 'usuarios_screen.dart';
 import 'alertas_screen.dart';
+import 'mantenimiento_screen.dart';
 import 'historial_alertas_screen.dart';
 import 'exportar_screen.dart';
 import 'auditoriascreen.dart';
@@ -27,13 +28,14 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     DashboardScreen(),
-    UsuariosScreen(),
+    //UsuariosScreen(),
     VerLecturasScreen(),
    // AlertasScreen(),
     HistorialAlertasScreen(),
     ExportarScreen(),
     AuditoriaScreen(),
     VerCapturasScreen(),
+    MantenimientoScreen(),
   ];
 
   @override
