@@ -14,6 +14,11 @@ class _TrampasScreenState extends State<TrampasScreen> {
   String? filtroEstado = 'Todas';
   String? filtroAdhesivo = 'Todas';
 
+  final Map<String, String> estadoMap = {
+    'Activa': 'active',
+    'Inactiva': 'inactive',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +44,9 @@ class _TrampasScreenState extends State<TrampasScreen> {
   }
 
   Future<void> eliminarTrampa(Map<String, dynamic> trampa) async {
+    final confirmar = await _mostrarConfirmacion(trampa);
+    if (!confirmar) return;
+
     final tiene = await tieneCapturas(int.parse(trampa['trampa_id'].toString()));
     if (tiene) {
       _mostrarDialogo("No se puede eliminar", "Esta trampa tiene capturas registradas.");
@@ -49,6 +57,27 @@ class _TrampasScreenState extends State<TrampasScreen> {
       );
       cargarTrampas();
     }
+  }
+
+  Future<bool> _mostrarConfirmacion(Map<String, dynamic> trampa) async {
+    return await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text("Confirmar eliminación"),
+        content: Text("¿Estás seguro de que deseas eliminar la trampa '${trampa['nombre'] ?? 'Sin nombre'}'?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text("Cancelar"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text("Sí, eliminar"),
+          ),
+        ],
+      ),
+    ) ?? false;
   }
 
   void _mostrarDialogo(String titulo, String mensaje) {
@@ -141,7 +170,7 @@ class _TrampasScreenState extends State<TrampasScreen> {
   Widget _buildTablaTrampas() {
     List<Map<String, dynamic>> trampasFiltradas = trampas.where((trampa) {
       if (filtroUbicacion != 'Todas' && trampa['ubicacion'] != filtroUbicacion) return false;
-      if (filtroEstado != 'Todas' && trampa['status'] != filtroEstado!.toLowerCase()) return false;
+      if (filtroEstado != 'Todas' && trampa['status'] != estadoMap[filtroEstado]) return false;
       if (filtroAdhesivo != 'Todas' && (trampa['trampa_adhesiva'] == 1 ? 'Sí' : 'No') != filtroAdhesivo) return false;
       return true;
     }).toList();
@@ -164,17 +193,28 @@ class _TrampasScreenState extends State<TrampasScreen> {
           DataCell(Text(trampa['ubicacion'] ?? '')),
           DataCell(Icon(trampa['trampa_adhesiva'] == 1 ? Icons.check : Icons.close,
               color: trampa['trampa_adhesiva'] == 1 ? Colors.green : Colors.red)),
-          DataCell(Text(trampa['status'].toString().capitalize())),
+          DataCell(Text(estadoEnEspanol(trampa['status']))),
           DataCell(Text(trampa['timestamp'].toString())),
           DataCell(Row(
             children: [
-              IconButton(icon: Icon(Icons.edit), onPressed: () => _mostrarFormularioTrampa(trampa: trampa)),
-              IconButton(icon: Icon(Icons.delete), onPressed: () => eliminarTrampa(trampa)),
+              IconButton(icon: Icon(Icons.edit, color: Colors.yellow), onPressed: () => _mostrarFormularioTrampa(trampa: trampa)),
+              IconButton(icon: Icon(Icons.delete, color: Colors.red), onPressed: () => eliminarTrampa(trampa)),
             ],
           )),
         ])).toList(),
       ),
     );
+  }
+
+  String estadoEnEspanol(String status) {
+    switch (status) {
+      case 'active':
+        return 'Activa';
+      case 'inactive':
+        return 'Inactiva';
+      default:
+        return status;
+    }
   }
 
   @override
@@ -204,8 +244,4 @@ class _TrampasScreenState extends State<TrampasScreen> {
       ),
     );
   }
-}
-
-extension StringExtension on String {
-  String capitalize() => this[0].toUpperCase() + substring(1);
 }

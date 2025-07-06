@@ -416,9 +416,9 @@ class _WeeklyCumulativeAreaChartState extends State<WeeklyCumulativeAreaChart>
     final diferencia = ultimosTres - primerosTres;
 
     if (diferencia > 2) {
-      return {'texto': '↗ Creciente', 'color': Colors.green};
+      return {'texto': '↗ Creciente', 'color': Colors.red};
     } else if (diferencia < -2) {
-      return {'texto': '↘ Decreciente', 'color': Colors.red};
+      return {'texto': '↘ Decreciente', 'color': Colors.green};
     } else {
       return {'texto': '→ Estable', 'color': Colors.orange};
     }

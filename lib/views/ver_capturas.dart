@@ -10,6 +10,7 @@ class VerCapturasScreen extends StatefulWidget {
 }
 
 class _VerCapturasScreenState extends State<VerCapturasScreen> {
+  List<Map<String, dynamic>> capturasOriginal = [];
   List<Map<String, dynamic>> capturas = [];
   List<int> trampasDisponibles = [];
   int _currentPage = 1;
@@ -29,7 +30,7 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
     _fetchTrampasDisponibles();
     _updateTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      _fetchCapturas();
+      _fetchCapturas(isAutoRefresh: true);
       _updateTime();
     });
   }
@@ -49,81 +50,34 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
     });
   }
 
-  Future<void> _fetchCapturas() async {
-    Future<void> delay = Future.delayed(const Duration(milliseconds: 500));
+  Future<void> _fetchCapturas({bool isAutoRefresh = false}) async {
+    final delay = Future.delayed(const Duration(milliseconds: 500));
     final responseFuture =
         http.get(Uri.parse("http://raspberrypi2.local/get_capturas.php"));
     await delay;
     final response = await responseFuture;
 
     if (mounted) {
-      setState(() {
-        if (response.statusCode == 200) {
-          capturas = List<Map<String, dynamic>>.from(jsonDecode(response.body));
-          _applyFilters();
-        } else {
-          print("Error al obtener las capturas: ${response.statusCode}");
-        }
-      });
+      if (response.statusCode == 200) {
+        final List<Map<String, dynamic>> data = List<Map<String, dynamic>>.from(jsonDecode(response.body));
+        setState(() {
+          capturasOriginal = data;
+          _applyFilters(resetPage: !isAutoRefresh);
+        });
+      } else {
+        print("Error al obtener las capturas: ${response.statusCode}");
+      }
     }
   }
 
   Future<void> _fetchTrampasDisponibles() async {
     final response = await http.get(Uri.parse("http://raspberrypi2.local/get_trampas_disponibles.php"));
     if (response.statusCode == 200) {
+      final List<dynamic> rawList = jsonDecode(response.body);
       setState(() {
-        trampasDisponibles = List<int>.from(jsonDecode(response.body));
+        trampasDisponibles = rawList.map((e) => int.tryParse(e.toString()) ?? 0).toList();
       });
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      appBar: AppBar(
-        title: Text("Lecturas por Captura", style: TextStyle(color: AppTheme.textPrimary)),
-        backgroundColor: AppTheme.cardBackground,
-        iconTheme: IconThemeData(color: AppTheme.textPrimary),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh, color: AppTheme.primaryBlue),
-            tooltip: "Actualizar datos",
-            onPressed: () {
-              _fetchCapturas();
-              _fetchTrampasDisponibles();
-            },
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                "Última actualización: $lastUpdateTime",
-                style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 20,
-              runSpacing: 10,
-              children: [_buildFilterDropdown(), _buildTrampaDropdown(), _buildSortDropdown()],
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: _isLoading ? _buildLoadingIndicator() : _buildTable(),
-            ),
-            const SizedBox(height: 10),
-            _buildPaginationControls(),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildTrampaDropdown() {
@@ -136,7 +90,7 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
       onChanged: (value) {
         setState(() {
           _selectedTrampaId = value;
-          _applyFilters();
+          _applyFilters(resetPage: true);
         });
       },
       items: [null, ...trampasDisponibles].map((id) {
@@ -146,10 +100,6 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
         );
       }).toList(),
     );
-  }
-
-  Widget _buildLoadingIndicator() {
-    return const Center(child: CircularProgressIndicator());
   }
 
   Widget _buildFilterDropdown() {
@@ -162,7 +112,7 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
       onChanged: (value) {
         setState(() {
           _selectedFilterDate = value;
-          _applyFilters();
+          _applyFilters(resetPage: true);
         });
       },
       items: ["Todos", "Hoy", "Última Semana", "Último Mes"]
@@ -181,7 +131,7 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
       onChanged: (value) {
         setState(() {
           _selectedSort = value;
-          _applyFilters();
+          _applyFilters(resetPage: true);
         });
       },
       items: [
@@ -195,9 +145,83 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
     );
   }
 
-  Widget _buildTable() {
-    List<Map<String, dynamic>> paginatedCapturas = _getPaginatedCapturas();
+  void _applyFilters({bool resetPage = false}) {
+    List<Map<String, dynamic>> filtered = List<Map<String, dynamic>>.from(capturasOriginal);
 
+    if (_selectedFilterDate != null && _selectedFilterDate != "Todos") {
+      DateTime now = DateTime.now();
+      DateTime filterDate;
+
+      if (_selectedFilterDate == "Hoy") {
+        filterDate = DateTime(now.year, now.month, now.day);
+      } else if (_selectedFilterDate == "Última Semana") {
+        filterDate = now.subtract(const Duration(days: 7));
+      } else {
+        filterDate = now.subtract(const Duration(days: 30));
+      }
+
+      filtered = filtered.where((c) {
+        try {
+          DateTime date = DateTime.parse(c["fecha"]);
+          if (_selectedFilterDate == "Hoy") {
+            return date.year == now.year && date.month == now.month && date.day == now.day;
+          }
+          return date.isAfter(filterDate);
+        } catch (_) {
+          return false;
+        }
+      }).toList();
+    }
+
+    if (_selectedTrampaId != null) {
+      filtered = filtered.where((c) => c["trampa_id"] == _selectedTrampaId).toList();
+    }
+
+    if (_selectedSort != null) {
+      switch (_selectedSort) {
+        case "ID Ascendente":
+          filtered.sort((a, b) => a["id"].compareTo(b["id"]));
+          break;
+        case "ID Descendente":
+          filtered.sort((a, b) => b["id"].compareTo(a["id"]));
+          break;
+        case "Total Insectos Ascendente":
+          filtered.sort((a, b) => a["total_insectos"].compareTo(b["total_insectos"]));
+          break;
+        case "Total Insectos Descendente":
+          filtered.sort((a, b) => b["total_insectos"].compareTo(a["total_insectos"]));
+          break;
+        case "Fecha Ascendente":
+          filtered.sort((a, b) => DateTime.parse(a["fecha"]).compareTo(DateTime.parse(b["fecha"])));
+          break;
+        case "Fecha Descendente":
+          filtered.sort((a, b) => DateTime.parse(b["fecha"]).compareTo(DateTime.parse(a["fecha"])));
+          break;
+      }
+    }
+
+    if (resetPage) _currentPage = 1;
+
+    final totalPages = (filtered.length / _itemsPerPage).ceil();
+    if (_currentPage > totalPages && totalPages > 0) {
+      _currentPage = totalPages;
+    }
+
+    setState(() {
+      capturas = filtered;
+    });
+  }
+
+  List<Map<String, dynamic>> _getPaginatedCapturas() {
+    int startIndex = (_currentPage - 1) * _itemsPerPage;
+    int endIndex = startIndex + _itemsPerPage;
+    endIndex = endIndex > capturas.length ? capturas.length : endIndex;
+    if (startIndex >= capturas.length) return [];
+    return capturas.sublist(startIndex, endIndex);
+  }
+
+  Widget _buildTable() {
+    final paginated = _getPaginatedCapturas();
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
@@ -218,7 +242,7 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
                   DataColumn(label: Text("Insectos Detallados")),
                   DataColumn(label: Text("Mostrar Captura")),
                 ],
-                rows: paginatedCapturas.map((captura) {
+                rows: paginated.map((captura) {
                   return DataRow(cells: [
                     DataCell(Text(captura["id"].toString())),
                     DataCell(Text(captura["trampa_id"].toString())),
@@ -226,12 +250,10 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
                     DataCell(Text(captura["fecha"].toString())),
                     DataCell(Text(_formatearInsectos(captura["insectos"]))),
                     DataCell(
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: () => _mostrarImagenPorId(captura["id"]),
-                          child: Text("Mostrar", style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
-                        ),
+                      IconButton(
+                        icon: Icon(Icons.visibility, color: Colors.blue),
+                        tooltip: "Ver captura",
+                        onPressed: () => _mostrarImagenPorId(captura["id"]),
                       ),
                     ),
                   ]);
@@ -294,7 +316,8 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
         ElevatedButton(
           onPressed: () {
             final page = int.tryParse(_pageController.text);
-            if (page != null && page > 0 && page <= totalPages) {
+            final maxPage = (capturas.length / _itemsPerPage).ceil();
+            if (page != null && page > 0 && page <= maxPage) {
               setState(() => _currentPage = page);
             }
           },
@@ -304,69 +327,52 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
     );
   }
 
-  void _applyFilters() {
-    setState(() {
-      var filtered = List<Map<String, dynamic>>.from(capturas);
-
-      if (_selectedFilterDate != null && _selectedFilterDate != "Todos") {
-        DateTime now = DateTime.now();
-        DateTime filterDate;
-
-        if (_selectedFilterDate == "Hoy") {
-          filterDate = DateTime(now.year, now.month, now.day);
-        } else if (_selectedFilterDate == "Última Semana") {
-          filterDate = now.subtract(const Duration(days: 7));
-        } else {
-          filterDate = now.subtract(const Duration(days: 30));
-        }
-
-        filtered = filtered.where((c) {
-          try {
-            DateTime date = DateTime.parse(c["fecha"]);
-            if (_selectedFilterDate == "Hoy") {
-              return date.year == now.year && date.month == now.month && date.day == now.day;
-            }
-            return date.isAfter(filterDate);
-          } catch (_) {
-            return false;
-          }
-        }).toList();
-      }
-
-      if (_selectedTrampaId != null) {
-        filtered = filtered.where((c) => c["trampa_id"] == _selectedTrampaId).toList();
-      }
-
-      if (_selectedSort != null) {
-        switch (_selectedSort) {
-          case "ID Ascendente":
-            filtered.sort((a, b) => a["id"].compareTo(b["id"]));
-            break;
-          case "ID Descendente":
-            filtered.sort((a, b) => b["id"].compareTo(a["id"]));
-            break;
-          case "Total Insectos Ascendente":
-            filtered.sort((a, b) => a["total_insectos"].compareTo(b["total_insectos"]));
-            break;
-          case "Total Insectos Descendente":
-            filtered.sort((a, b) => b["total_insectos"].compareTo(a["total_insectos"]));
-            break;
-          case "Fecha Ascendente":
-            filtered.sort((a, b) => DateTime.parse(a["fecha"]).compareTo(DateTime.parse(b["fecha"])));
-            break;
-          case "Fecha Descendente":
-            filtered.sort((a, b) => DateTime.parse(b["fecha"]).compareTo(DateTime.parse(a["fecha"])));
-            break;
-        }
-      }
-
-      capturas = filtered;
-    });
-  }
-
-  List<Map<String, dynamic>> _getPaginatedCapturas() {
-    int startIndex = (_currentPage - 1) * _itemsPerPage;
-    int endIndex = startIndex + _itemsPerPage;
-    return capturas.sublist(startIndex, endIndex > capturas.length ? capturas.length : endIndex);
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
+      appBar: AppBar(
+        title: Text("Lecturas por Captura", style: TextStyle(color: AppTheme.textPrimary)),
+        backgroundColor: AppTheme.cardBackground,
+        iconTheme: IconThemeData(color: AppTheme.textPrimary),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: AppTheme.primaryBlue),
+            tooltip: "Actualizar datos",
+            onPressed: () {
+              _fetchCapturas();
+              _fetchTrampasDisponibles();
+            },
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                "Última actualización: $lastUpdateTime",
+                style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 20,
+              runSpacing: 10,
+              children: [_buildFilterDropdown(), _buildTrampaDropdown(), _buildSortDropdown()],
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: _isLoading ? Center(child: CircularProgressIndicator()) : _buildTable(),
+            ),
+            const SizedBox(height: 10),
+            _buildPaginationControls(),
+          ],
+        ),
+      ),
+    );
   }
 }

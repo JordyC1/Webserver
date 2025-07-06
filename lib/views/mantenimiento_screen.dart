@@ -1,5 +1,8 @@
+import 'package:aplicacionweb/views/ver_lecturas.dart';
 import 'package:flutter/material.dart';
 import 'usuarios_screen.dart';
+import 'mantenimiento_fisico.dart';
+import 'mantenimiento_lecturas.dart';
 import '../theme/app_theme.dart';
 import 'trampas_screen.dart';
 
@@ -70,16 +73,16 @@ class MantenimientoScreen extends StatelessWidget {
                   );
                 }),
                 _buildCard("Lecturas", "Ver y administrar capturas", Icons.analytics_outlined, () {
-                  // Navegar a pantalla de lecturas
-                }),
-                _buildCard("Alertas", "Revisar historial y estados", Icons.warning_amber, () {
-                  // Navegar a pantalla de alertas
-                }),
-                _buildCard("Ubicaciones", "Zonas o sectores monitoreados", Icons.map_outlined, () {
-                  // Navegar a zonas
+                   Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => LecturasPorDeteccionScreen()),
+                  );
                 }),
                 _buildCard("Mantenimiento físico", "Cambios de trampa, limpieza, notas", Icons.build, () {
-                  // Navegar a historial de mantenimiento
+                   Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => MantenimientoFisicoScreen()),
+                  );
                 }),
               ],
             );

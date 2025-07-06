@@ -101,6 +101,7 @@ class _AlertsSeverityChartState extends State<AlertsSeverityChart>
     );
   }
 
+
   Widget _buildChart() {
     if (chartData == null || chartData!.isEmpty) {
       return Center(
@@ -327,28 +328,30 @@ class _AlertsSeverityChartState extends State<AlertsSeverityChart>
     }
 
     final totalAlertas = chartData!.fold(0, (sum, data) => sum + data.cantidad);
-    final alertasAltas = chartData!
-        .where((data) => data.severidad == 'alta')
-        .fold(0, (sum, data) => sum + data.cantidad);
+    final cantidadAlta = _getCantidadPorSeveridad('alta');
+    final cantidadMedia = _getCantidadPorSeveridad('media');
+    final cantidadBaja = _getCantidadPorSeveridad('baja');
 
-    String estadoGeneral = 'Bueno';
-    Color colorEstado = Colors.green;
+    String estado = 'Óptimo';
+    Color color = Colors.green;
 
-    if (alertasAltas > 0) {
-      estadoGeneral = 'Crítico';
-      colorEstado = Colors.red;
-    } else if (totalAlertas > 3) {
-      estadoGeneral = 'Atención';
-      colorEstado = Colors.orange;
+    if (cantidadAlta >= 5 || totalAlertas >= 10) {
+      estado = 'Colapsado';
+      color = const Color(0xFFB71C1C); // Rojo oscuro
+    } else if (cantidadAlta >= 2) {
+      estado = 'Crítico';
+      color = Colors.red;
+    } else if (cantidadAlta == 1 || cantidadMedia >= 2) {
+      estado = 'Atención';
+      color = Colors.orange;
+    } else if (cantidadMedia == 1 || cantidadBaja > 0) {
+      estado = 'Estable';
+      color = Colors.blue;
     }
 
     return ChartStats(
       stats: [
-        ChartStatItem(
-          label: 'Estado',
-          value: estadoGeneral,
-          valueColor: colorEstado,
-        ),
+        ChartStatItem(label: 'Estado', value: estado, valueColor: color),
         ChartStatItem(
           label: 'Total',
           value: totalAlertas.toString(),
@@ -356,11 +359,17 @@ class _AlertsSeverityChartState extends State<AlertsSeverityChart>
         ),
         ChartStatItem(
           label: 'Críticas',
-          value: alertasAltas.toString(),
-          valueColor: alertasAltas > 0 ? Colors.red : Colors.green,
+          value: cantidadAlta.toString(),
+          valueColor: cantidadAlta > 0 ? Colors.red : Colors.green,
         ),
       ],
     );
+  }
+
+  int _getCantidadPorSeveridad(String severidad) {
+    return chartData!
+        .where((data) => data.severidad.toLowerCase() == severidad)
+        .fold(0, (sum, data) => sum + data.cantidad);
   }
 }
 

@@ -13,7 +13,7 @@ class ChartDataService {
     final now = DateTime.now();
     final startDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: days - 1));
     final formattedStart = DateFormat('yyyy-MM-dd').format(startDate);
-    final formattedEnd = DateFormat('yyyy-MM-dd').format(now);
+    final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime(now.year, now.month, now.day, 23, 59, 59));
 
     final response = await http
         .get(Uri.parse("$baseUrl/get_promedio_diario.php?inicio=$formattedStart&fin=$formattedEnd"))
@@ -29,7 +29,6 @@ class ChartDataService {
         item['fecha']: int.tryParse(item['promedio'].toString()) ?? 0,
     };
 
-    // Generar todos los días incluyendo los que no tienen datos
     List<DailyTrendPoint> puntos = [];
     for (int i = 0; i < days; i++) {
       final fecha = startDate.add(Duration(days: i));
@@ -48,6 +47,7 @@ class ChartDataService {
     return ChartDataResponse.error("Error al procesar datos de tendencia: $e");
   }
 }
+
 
 
   // 🥧 Obtener distribución por tipo de insecto
@@ -136,7 +136,7 @@ class ChartDataService {
     final now = DateTime.now();
     final startDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: days - 1));
     final formattedStart = DateFormat('yyyy-MM-dd').format(startDate);
-    final formattedEnd = DateFormat('yyyy-MM-dd').format(now);
+    final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime(now.year, now.month, now.day, 23, 59, 59));
 
     final response = await http
         .get(Uri.parse("$baseUrl/get_promedio_tipo_por_dia.php?inicio=$formattedStart&fin=$formattedEnd"))
@@ -151,7 +151,6 @@ class ChartDataService {
       return ChartDataResponse.success(<StackedBarData>[]);
     }
 
-    // Agrupar datos por fecha y tipo
     Map<String, Map<String, int>> datosPorFechaYTipo = {};
 
     for (var item in jsonData) {
@@ -160,16 +159,12 @@ class ChartDataService {
         final tipo = item['tipo'].toString();
         final promedio = int.tryParse(item['promedio'].toString()) ?? 0;
 
-        if (!datosPorFechaYTipo.containsKey(fechaKey)) {
-          datosPorFechaYTipo[fechaKey] = {};
-        }
-        datosPorFechaYTipo[fechaKey]![tipo] = promedio;
+        datosPorFechaYTipo.putIfAbsent(fechaKey, () => {})[tipo] = promedio;
       } catch (e) {
         print("Error al procesar datos promedio tipo/día: $e");
       }
     }
 
-    // Crear lista final para los últimos N días
     List<StackedBarData> datosApilados = [];
     for (int i = 0; i < days; i++) {
       final fecha = startDate.add(Duration(days: i));
@@ -190,6 +185,7 @@ class ChartDataService {
     return ChartDataResponse.error("Error al procesar datos de barras apiladas: $e");
   }
 }
+
 
 
   // ⚠️ Obtener datos de alertas por severidad
@@ -251,7 +247,7 @@ class ChartDataService {
     final now = DateTime.now();
     final startDate = now.subtract(Duration(days: days));
     final formattedStart = DateFormat('yyyy-MM-dd').format(startDate);
-    final formattedEnd = DateFormat('yyyy-MM-dd').format(now);
+    final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime(now.year, now.month, now.day, 23, 59, 59));
 
     final response = await http
         .get(Uri.parse("$baseUrl/get_promedio_hora.php?inicio=$formattedStart&fin=$formattedEnd"))
@@ -266,22 +262,17 @@ class ChartDataService {
       return ChartDataResponse.success(<HourlyActivityData>[]);
     }
 
-    // Inicializar matriz: [día de semana][hora] = promedio
     Map<int, Map<int, int>> actividadPorHoraDia = {};
     for (int dia = 0; dia < 7; dia++) {
-      actividadPorHoraDia[dia] = {};
-      for (int hora = 0; hora < 24; hora++) {
-        actividadPorHoraDia[dia]![hora] = 0;
-      }
+      actividadPorHoraDia[dia] = {for (int h = 0; h < 24; h++) h: 0};
     }
 
     int maxPromedio = 0;
 
-    // Procesar cada entrada del backend (con fecha completa)
     for (var item in jsonData) {
       try {
         final fecha = DateTime.parse(item['fecha']);
-        final diaSemana = (fecha.weekday - 1) % 7; // lunes=0 ... domingo=6
+        final diaSemana = (fecha.weekday - 1) % 7;
         final hora = fecha.hour;
         final promedio = int.tryParse(item['promedio'].toString()) ?? 0;
 
@@ -296,7 +287,6 @@ class ChartDataService {
       }
     }
 
-    // Crear lista de datos con intensidad normalizada
     List<HourlyActivityData> datosActividad = [];
     for (int dia = 0; dia < 7; dia++) {
       for (int hora = 0; hora < 24; hora++) {
@@ -319,13 +309,14 @@ class ChartDataService {
 }
 
 
+
   // 📈 Obtener datos acumulativos semanales
 static Future<ChartDataResponse<List<WeeklyCumulativeData>>> fetchWeeklyCumulativeData({int days = 7}) async {
   try {
     final now = DateTime.now();
     final startDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: days - 1));
     final formattedStart = DateFormat('yyyy-MM-dd').format(startDate);
-    final formattedEnd = DateFormat('yyyy-MM-dd').format(now);
+    final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime(now.year, now.month, now.day, 23, 59, 59));
 
     final response = await http
         .get(Uri.parse("$baseUrl/get_promedio_diario.php?inicio=$formattedStart&fin=$formattedEnd"))
@@ -337,13 +328,11 @@ static Future<ChartDataResponse<List<WeeklyCumulativeData>>> fetchWeeklyCumulati
 
     List<dynamic> jsonData = jsonDecode(response.body);
 
-    // Crear mapa de promedio por fecha
     Map<String, int> promedioPorFecha = {
       for (var item in jsonData)
         item['fecha']: int.tryParse(item['promedio'].toString()) ?? 0,
     };
 
-    // Construir datos acumulativos
     List<WeeklyCumulativeData> datosAcumulativos = [];
     int acumulado = 0;
 
@@ -366,6 +355,7 @@ static Future<ChartDataResponse<List<WeeklyCumulativeData>>> fetchWeeklyCumulati
     return ChartDataResponse.error("Error al procesar datos acumulativos: $e");
   }
 }
+
 
   // ⏱️ Calcular tiempo promedio entre detecciones
   static Future<ChartDataResponse<AverageTimeIndicator>>
