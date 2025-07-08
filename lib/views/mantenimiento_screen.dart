@@ -1,3 +1,4 @@
+import 'package:aplicacionweb/views/Mantenimiento_alerta.dart';
 import 'package:aplicacionweb/views/ver_lecturas.dart';
 import 'package:flutter/material.dart';
 import 'usuarios_screen.dart';
@@ -82,6 +83,12 @@ class MantenimientoScreen extends StatelessWidget {
                    Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => MantenimientoFisicoScreen()),
+                  );
+                }),
+                _buildCard("Alertas", "Ver y administrar alertas", Icons.notifications_active, () {
+                   Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => PlagaAlertsScreen()),
                   );
                 }),
               ],

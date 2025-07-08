@@ -15,6 +15,8 @@ class _MantenimientoFisicoScreenState extends State<MantenimientoFisicoScreen> {
   final TextEditingController _notasController = TextEditingController();
 
   List<Map<String, dynamic>> mantenimientos = [];
+  List<Map<String, dynamic>> todosMantenimientos = [];
+
   final List<String> tiposMantenimiento = [
     "Cambio de trampa",
     "Limpieza",
@@ -23,6 +25,10 @@ class _MantenimientoFisicoScreenState extends State<MantenimientoFisicoScreen> {
   ];
 
   List<String> trampasDisponibles = [];
+
+  String? filtroTrampa;
+  String? filtroTipo;
+  DateTime? filtroFecha;
 
   @override
   void initState() {
@@ -36,13 +42,15 @@ class _MantenimientoFisicoScreenState extends State<MantenimientoFisicoScreen> {
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       setState(() {
-        mantenimientos = data.map((e) => {
+        todosMantenimientos = data.map((e) => {
           "id": int.tryParse(e["id"].toString()) ?? 0,
+          "trampa_id": e["trampa_id"].toString(),
           "trampa": e["nombre_trampa"] ?? "Trampa ID ${e["trampa_id"]}",
           "tipo": e["tipo_mantenimiento"],
           "fecha": e["fecha"],
           "notas": e["notas"] ?? ""
         }).toList();
+        _aplicarFiltros();
       });
     }
   }
@@ -55,6 +63,17 @@ class _MantenimientoFisicoScreenState extends State<MantenimientoFisicoScreen> {
         trampasDisponibles = data.map((e) => e.toString()).toList();
       });
     }
+  }
+
+  void _aplicarFiltros() {
+    setState(() {
+      mantenimientos = todosMantenimientos.where((m) {
+        final matchTrampa = filtroTrampa == null || m["trampa_id"] == filtroTrampa;
+        final matchTipo = filtroTipo == null || m["tipo"] == filtroTipo;
+        final matchFecha = filtroFecha == null || m["fecha"].toString().startsWith(filtroFecha!.toIso8601String().substring(0, 10));
+        return matchTrampa && matchTipo && matchFecha;
+      }).toList();
+    });
   }
 
   Future<void> _registrarMantenimiento() async {
@@ -70,7 +89,7 @@ class _MantenimientoFisicoScreenState extends State<MantenimientoFisicoScreen> {
         },
       );
       if (response.statusCode == 200) {
-        _fetchMantenimientos();
+        await _fetchMantenimientos();
         setState(() {
           selectedTrampa = null;
           selectedTipo = null;
@@ -91,10 +110,7 @@ class _MantenimientoFisicoScreenState extends State<MantenimientoFisicoScreen> {
         title: Text("¿Eliminar mantenimiento?"),
         content: Text("¿Estás seguro de que deseas eliminar este mantenimiento?"),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text("Cancelar"),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text("Cancelar")),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text("Eliminar"),
@@ -103,7 +119,6 @@ class _MantenimientoFisicoScreenState extends State<MantenimientoFisicoScreen> {
         ],
       ),
     );
-
     if (confirmado == true) {
       _eliminarMantenimiento(id);
     }
@@ -112,27 +127,18 @@ class _MantenimientoFisicoScreenState extends State<MantenimientoFisicoScreen> {
   Future<void> _eliminarMantenimiento(int id) async {
     final response = await http.post(
       Uri.parse("http://raspberrypi2.local/mantenimiento_fisico.php"),
-      body: {
-        "action": "eliminar",
-        "id": id.toString(),
-      },
+      body: {"action": "eliminar", "id": id.toString()},
     );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       if (data["success"]) {
-        setState(() {
-          mantenimientos.removeWhere((m) => m["id"] == id);
-        });
+        await _fetchMantenimientos();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error al eliminar el mantenimiento.")),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error al eliminar el mantenimiento.")));
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error al conectar con el servidor.")),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error al conectar con el servidor.")));
     }
   }
 
@@ -148,7 +154,6 @@ class _MantenimientoFisicoScreenState extends State<MantenimientoFisicoScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Card(
               elevation: 4,
@@ -159,8 +164,7 @@ class _MantenimientoFisicoScreenState extends State<MantenimientoFisicoScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Registrar mantenimiento", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-                    const SizedBox(height: 10),
+                    Text("Registrar mantenimiento", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     DropdownButton<String>(
                       value: selectedTrampa,
                       hint: Text("Seleccionar Trampa"),
@@ -177,19 +181,14 @@ class _MantenimientoFisicoScreenState extends State<MantenimientoFisicoScreen> {
                           .toList(),
                       onChanged: (val) => setState(() => selectedTipo = val),
                     ),
-                    const SizedBox(height: 10),
                     TextField(
                       controller: _notasController,
                       maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: "Notas u observaciones",
-                        border: OutlineInputBorder(),
-                      ),
+                      decoration: InputDecoration(labelText: "Notas", border: OutlineInputBorder()),
                     ),
-                    const SizedBox(height: 10),
                     Row(
                       children: [
-                        Text("Fecha: ${selectedDate.toLocal().toString().split(' ')[0]}", style: TextStyle(color: AppTheme.textSecondary)),
+                        Text("Fecha: ${selectedDate.toLocal().toString().split(' ')[0]}"),
                         Spacer(),
                         TextButton(
                           onPressed: () async {
@@ -207,17 +206,62 @@ class _MantenimientoFisicoScreenState extends State<MantenimientoFisicoScreen> {
                         )
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: _registrarMantenimiento,
-                      child: Text("Registrar"),
-                    ),
+                    ElevatedButton(onPressed: _registrarMantenimiento, child: Text("Registrar"))
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 20),
-            Text("Historial", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+            Wrap(
+              spacing: 16,
+              runSpacing: 10,
+              children: [
+                DropdownButton<String>(
+                  value: filtroTrampa,
+                  hint: Text("Filtrar por Trampa"),
+                  items: [null, ...trampasDisponibles].map((id) {
+                    return DropdownMenuItem<String>(
+                      value: id,
+                      child: Text(id == null ? "Todas" : "Trampa ID $id"),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    filtroTrampa = val;
+                    _aplicarFiltros();
+                  },
+                ),
+                DropdownButton<String>(
+                  value: filtroTipo,
+                  hint: Text("Filtrar por Tipo"),
+                  items: [null, ...tiposMantenimiento].map((tipo) {
+                    return DropdownMenuItem<String>(
+                      value: tipo,
+                      child: Text(tipo ?? "Todos"),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    filtroTipo = val;
+                    _aplicarFiltros();
+                  },
+                ),
+                ElevatedButton.icon(
+                  icon: Icon(Icons.date_range),
+                  label: Text("Filtrar por Fecha"),
+                  onPressed: () async {
+                    DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: filtroFecha ?? DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) {
+                      filtroFecha = picked;
+                      _aplicarFiltros();
+                    }
+                  },
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
             Expanded(
               child: ListView.builder(
@@ -235,20 +279,13 @@ class _MantenimientoFisicoScreenState extends State<MantenimientoFisicoScreen> {
                       isThreeLine: true,
                       trailing: IconButton(
                         icon: Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          final id = item["id"];
-                          if (id is int) {
-                            _confirmarEliminar(id);
-                          } else {
-                            print("ID inválido: $id");
-                          }
-                        },
+                        onPressed: () => _confirmarEliminar(item["id"]),
                       ),
                     ),
                   );
                 },
               ),
-            )
+            ),
           ],
         ),
       ),

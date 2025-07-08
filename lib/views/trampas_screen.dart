@@ -197,7 +197,7 @@ class _TrampasScreenState extends State<TrampasScreen> {
           DataCell(Text(trampa['timestamp'].toString())),
           DataCell(Row(
             children: [
-              IconButton(icon: Icon(Icons.edit, color: Colors.yellow), onPressed: () => _mostrarFormularioTrampa(trampa: trampa)),
+              IconButton(icon: Icon(Icons.edit, color: Colors.amber), onPressed: () => _mostrarFormularioTrampa(trampa: trampa)),
               IconButton(icon: Icon(Icons.delete, color: Colors.red), onPressed: () => eliminarTrampa(trampa)),
             ],
           )),
