@@ -801,6 +801,80 @@ static Future<ChartDataResponse<List<WeeklyCumulativeData>>> fetchWeeklyCumulati
     return ChartDataResponse.success(defaultThresholds);
   }
 
+  // 📈 Obtener datos de tendencia semanal por tipo de insecto
+  static Future<ChartDataResponse<List<WeeklyTrendPoint>>> fetchWeeklyTrendByType({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      // Configurar fechas por defecto (últimos 7 días)
+      final now = DateTime.now();
+      final defaultEndDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
+      final defaultStartDate = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
+      
+      final finalStartDate = startDate ?? defaultStartDate;
+      final finalEndDate = endDate ?? defaultEndDate;
+      
+      final formattedStart = DateFormat('yyyy-MM-dd').format(finalStartDate);
+      final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(finalEndDate);
+
+      // Utilizar el endpoint existente get_promedio_tipo_por_dia.php
+       final response = await http
+           .get(Uri.parse("$baseUrl/get_promedio_tipo_por_dia.php?inicio=$formattedStart&fin=$formattedEnd"))
+           .timeout(const Duration(seconds: 15));
+ 
+       if (response.statusCode != 200) {
+         return ChartDataResponse.error("Error al conectar con el servidor: ${response.statusCode}");
+       }
+
+      List<dynamic> jsonData = jsonDecode(response.body);
+      if (jsonData.isEmpty) {
+        return ChartDataResponse.success(<WeeklyTrendPoint>[]);
+      }
+
+      // Procesar datos y agrupar por fecha
+      Map<String, List<WeeklyTrendByTypeData>> datosPorFecha = {};
+
+      for (var item in jsonData) {
+        try {
+          final fechaKey = item['fecha'];
+          final tipo = item['tipo'].toString();
+          final promedio = int.tryParse(item['promedio'].toString()) ?? 0;
+
+          final trendData = WeeklyTrendByTypeData(
+             fecha: fechaKey,
+             tipoInsecto: tipo,
+             cantidad: promedio,
+             fechaDateTime: DateTime.parse(fechaKey),
+           );
+
+          datosPorFecha.putIfAbsent(fechaKey, () => []).add(trendData);
+        } catch (e) {
+           // Error al procesar datos de tendencia semanal por tipo: $e
+         }
+      }
+
+      // Crear lista de puntos de tendencia para los últimos 7 días
+      List<WeeklyTrendPoint> puntosSemanales = [];
+      final totalDays = finalEndDate.difference(finalStartDate).inDays + 1;
+      
+      for (int i = 0; i < totalDays; i++) {
+        final fecha = finalStartDate.add(Duration(days: i));
+        final fechaKey = DateFormat('yyyy-MM-dd').format(fecha);
+        final datosDelDia = datosPorFecha[fechaKey] ?? [];
+
+        puntosSemanales.add(WeeklyTrendPoint.fromTrendDataList(
+           fechaKey,
+           datosDelDia,
+         ));
+      }
+
+      return ChartDataResponse.success(puntosSemanales);
+    } catch (e) {
+       return ChartDataResponse.error("Error al procesar datos de tendencia semanal por tipo: $e");
+     }
+  }
+
   // 🔄 Método para obtener todos los datos de una vez (opcional, para optimización)
   static Future<Map<String, dynamic>> fetchAllChartData() async {
     final results = await Future.wait([

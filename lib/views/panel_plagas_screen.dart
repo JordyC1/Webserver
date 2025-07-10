@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/charts/insect_indicators_grid.dart';
 import '../widgets/charts/insects_summary_card.dart';
+import '../widgets/charts/weekly_trend_by_type_chart.dart';
 import '../models/chart_models.dart';
 import '../services/chart_data_service.dart';
 
@@ -141,6 +142,10 @@ class _PanelPlagasScreenState extends State<PanelPlagasScreen> {
 
               // Tarjeta de resumen de insectos
               _buildInsectSummaryCard(),
+              const SizedBox(height: 24),
+
+              // Gráfico de tendencia semanal por tipo
+              _buildWeeklyTrendChart(),
               const SizedBox(height: 24),
 
               // Grilla de indicadores de insectos
@@ -308,6 +313,25 @@ class _PanelPlagasScreenState extends State<PanelPlagasScreen> {
         currentPeriodLabel: _getCurrentPeriodLabel(),
         previousPeriodLabel: _getPreviousPeriodLabel(),
       );
+    }
+  }
+
+  Widget _buildWeeklyTrendChart() {
+    return WeeklyTrendByTypeChart(
+      days: _getFilteredDays(),
+      height: 350,
+      showLegend: true,
+    );
+  }
+
+  int _getFilteredDays() {
+    switch (selectedFilter) {
+      case TimeFilter.today:
+        return 1; // Mostrar últimas 24 horas
+      case TimeFilter.week:
+        return 7;
+      case TimeFilter.month:
+        return 30;
     }
   }
 

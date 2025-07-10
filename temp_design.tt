@@ -1,422 +1,202 @@
+ 
 
+          
+# Plan Detallado: Gráfica "Tendencia Semanal por Tipo" en Panel de Plagas
 
+## 📋 Resumen del Plan
 
-          
-Necesito crear un plan detallado para implementar el panel de indicadores visuales por tipo de insecto con semaforización. Primero debo analizar a fondo la estructura actual del proyecto, los endpoints disponibles, los modelos existentes y la arquitectura de widgets para crear un plan preciso y completo.
-        
-            
-toolName: view_files
-            
-status: success
-          
-            
-filePath: c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\views\dashboard_screen.dart
-          
-Necesito ver más del dashboard actual para entender su estructura completa y luego revisar los widgets de gráficas existentes.
-        
-            
-toolName: view_files
-            
-status: success
-          
-            
-filePath: c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\views\dashboard_screen.dart
-          
-Ahora necesito ver el resto del dashboard para entender la estructura completa de las tarjetas y widgets responsivos.
-        
-            
-toolName: view_files
-            
-status: success
-          
-            
-filePath: c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\views\dashboard_screen.dart
-          
-Ahora necesito revisar los widgets de gráficas existentes para entender su estructura y patrones de implementación.
-        
-            
-toolName: view_folder
-            
-status: success
-          
-c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\charts
-          
-Voy a revisar el widget base para entender la estructura común de las gráficas y luego examinar algunos widgets específicos para entender los patrones.
-        
-            
-toolName: view_files
-            
-status: success
-          
-            
-filePath: c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\charts\base_chart_card.dart
-c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\charts\insect_distribution_pie_chart.dart
-          
-Ahora voy a revisar el resto del archivo de distribución de insectos y también examinar el servicio de datos para entender mejor los patrones.
-        
-            
-toolName: view_files
-            
-status: success
-          
-            
-filePath: c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\charts\insect_distribution_pie_chart.dart
-c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\services\chart_data_service.dart
-          
-Ahora voy a revisar el servicio de alertas y los modelos para entender mejor la estructura de datos disponible.
-        
-            
-toolName: view_files
-            
-status: success
-          
-            
-filePath: c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\services\alert_service.dart
-c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\models\chart_models.dart
-          
-Ahora voy a revisar el archivo de configuración de endpoints PHP para entender mejor qué datos están disponibles.
-        
-            
-toolName: search_by_regex
-            
-status: success
-          
-          
-Ahora voy a revisar la estructura del directorio principal para entender mejor la organización del proyecto y luego crear el plan detallado.
-        
-            
-toolName: view_folder
-            
-status: success
-          
-c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib
-          
-# Plan Detallado para Dashboard con Indicadores Visuales por Tipo de Insecto
+Agregar una nueva gráfica de líneas que muestre la tendencia diaria de cada tipo de insecto en los últimos 7 días, posicionada entre la sección summary (<mcfile name="insects_summary_card.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\insects_summary_card.dart"></mcfile>) y las cards de indicadores (<mcfile name="insect_indicators_grid.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\insect_indicators_grid.dart"></mcfile>).
 
-## 📋 Análisis del Estado Actual
+## 🏗️ Arquitectura y Componentes
 
-### Estructura Existente Verificada:
-- **Modelos**: <mcfile name="chart_models.dart" path="lib/models/chart_models.dart"></mcfile> con `InsectTypeData`, `DailyTrendPoint`, `AlertSeverityData`
-- **Servicios**: <mcfile name="chart_data_service.dart" path="lib/services/chart_data_service.dart"></mcfile> y <mcfile name="alert_service.dart" path="lib/services/alert_service.dart"></mcfile>
-- **Widgets Base**: <mcfile name="base_chart_card.dart" path="lib/widgets/charts/base_chart_card.dart"></mcfile> para estructura común
-- **Tema**: <mcfile name="app_theme.dart" path="lib/theme/app_theme.dart"></mcfile> con `insectTypeColors` y métodos `getInsectTypeColor`
-- **Dashboard**: <mcfile name="dashboard_screen.dart" path="lib/views/dashboard_screen.dart"></mcfile> con sistema responsive
+### 1. Modelo de Datos
+**Archivo:** <mcfile name="chart_models.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\models\chart_models.dart"></mcfile>
 
-### Endpoints PHP Disponibles:
-- `get_lecturas.php` - Datos completos de lecturas
-- `get_tipos_insectos.php` - Lista de tipos de insectos
-- `get_alertas.php` - Sistema de alertas con severidad
-- `get_promedio_diario.php` - Promedios diarios
-- `get_promedio_tipo_por_dia.php` - Promedios por tipo y día
-
-## 🎯 Plan de Implementación
-
-### **FASE 1: Modelos de Datos**
-
-#### 1.1 Crear Modelo para Indicadores de Insectos
-**Archivo**: <mcfile name="chart_models.dart" path="lib/models/chart_models.dart"></mcfile>
-
-**Nuevas Clases a Agregar**:
+**Nuevas clases a agregar:**
 ```dart
-class InsectIndicatorData {
+class WeeklyTrendByTypeData {
+  final String fecha;
   final String tipoInsecto;
-  final int cantidadHoy;
-  final int cantidadAyer;
-  final double porcentajeCambio;
-  final String tendencia; // 'up', 'down', 'stable'
-  final Color colorTipo;
-  final AlertLevel nivelAlerta;
-  final int umbralAlerta;
-  final bool tieneAlertaActiva;
-}
-
-class AlertLevel {
-  final String nivel; // 'normal', 'warning', 'critical'
-  final Color color;
-  final IconData icon;
-}
-
-class InsectDashboardSummary {
-  final List<InsectIndicatorData> indicadores;
-  final int totalInsectosHoy;
-  final int totalAlertasActivas;
-  final DateTime ultimaActualizacion;
-}
-```
-
-#### 1.2 Extender Modelos Existentes
-**Métodos a Agregar en `InsectTypeData`**:
-- `AlertLevel calculateAlertLevel(int threshold)`
-- `double calculateTrendPercentage(int previousValue)`
-- `IconData getTrendIcon()`
-
-### **FASE 2: Servicios de Datos**
-
-#### 2.1 Extender ChartDataService
-**Archivo**: <mcfile name="chart_data_service.dart" path="lib/services/chart_data_service.dart"></mcfile>
-
-**Nuevos Métodos**:
-```dart
-static Future<ChartDataResponse<InsectDashboardSummary>> fetchInsectIndicators({
-  int daysForComparison = 1,
-}) async
-
-static Future<ChartDataResponse<List<InsectIndicatorData>>> fetchInsectTypeIndicators({
-  DateTime? targetDate,
-}) async
-
-static Future<ChartDataResponse<Map<String, int>>> fetchInsectThresholds() async
-```
-
-#### 2.2 Crear Servicio de Configuración
-**Archivo Nuevo**: `lib/services/indicator_config_service.dart`
-
-**Clases y Métodos**:
-```dart
-class IndicatorConfigService {
-  static const Map<String, int> defaultThresholds = {
-    'mosca': 50,
-    'mosquito': 30,
-    'abeja': 20,
-    // ... otros tipos
-  };
+  final int cantidad;
+  final DateTime fechaDateTime;
   
-  static Future<Map<String, int>> loadThresholds()
-  static Future<bool> saveThresholds(Map<String, int> thresholds)
-  static AlertLevel calculateAlertLevel(int current, int threshold)
+  // Métodos: fromJson, toFlSpot, fechaFormateada
+}
+
+class WeeklyTrendPoint {
+  final String fecha;
+  final Map<String, int> cantidadesPorTipo;
+  final DateTime fechaDateTime;
+  
+  // Métodos: fromJson, fechaFormateada, getTotalForType
 }
 ```
 
-### **FASE 3: Widgets de Indicadores**
+### 2. Servicio de Datos
+**Archivo:** <mcfile name="chart_data_service.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\services\chart_data_service.dart"></mcfile>
 
-#### 3.1 Widget Principal de Indicadores
-**Archivo Nuevo**: `lib/widgets/charts/insect_indicators_grid.dart`
-
-**Clase Principal**:
+**Nuevo método a agregar:**
 ```dart
-class InsectIndicatorsGrid extends StatefulWidget {
+static Future<ChartDataResponse<List<WeeklyTrendPoint>>> fetchWeeklyTrendByType({
+  DateTime? startDate,
+  DateTime? endDate,
+}) async {
+  // Utiliza el endpoint existente get_promedio_tipo_por_dia.php
+  // Procesa los datos para agrupar por fecha y tipo
+  // Retorna datos de los últimos 7 días por defecto
+}
+```
+
+**Endpoint existente a utilizar:** `get_promedio_tipo_por_dia.php` (ya implementado)
+
+### 3. Widget de la Gráfica
+**Archivo nuevo:** <mcfile name="weekly_trend_by_type_chart.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\charts\weekly_trend_by_type_chart.dart"></mcfile>
+
+**Clase principal:**
+```dart
+class WeeklyTrendByTypeChart extends StatefulWidget {
+  final DateTime? startDate;
+  final DateTime? endDate;
   final double? height;
-  final int crossAxisCount;
-  final bool showTrends;
-  final VoidCallback? onRefresh;
+  final bool showLegend;
 }
 
-class _InsectIndicatorsGridState extends State<InsectIndicatorsGrid> {
-  InsectDashboardSummary? dashboardData;
-  bool isLoading = true;
-  String? errorMessage;
-  
-  // Métodos:
-  Future<void> _loadIndicators()
-  Widget _buildIndicatorCard(InsectIndicatorData indicator)
-  Widget _buildLoadingGrid()
-  Widget _buildErrorState()
+class _WeeklyTrendByTypeChartState extends State<WeeklyTrendByTypeChart> 
+    with SingleTickerProviderStateMixin {
+  // Propiedades de estado, animación y datos
 }
 ```
 
-#### 3.2 Widget de Tarjeta Individual
-**Archivo Nuevo**: `lib/widgets/charts/insect_indicator_card.dart`
+**Métodos principales:**
+- `_loadData()`: Carga datos usando <mcsymbol name="fetchWeeklyTrendByType" filename="chart_data_service.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\services\chart_data_service.dart" startline="227" type="function"></mcsymbol>
+- `_buildChart()`: Construye el LineChart con múltiples líneas
+- `_buildLineBarsData()`: Crea una línea por cada tipo de insecto
+- `_buildTouchData()`: Maneja tooltips mostrando tipo y cantidad
+- `_buildGridData()`: Configuración de grid
+- `_buildTitlesData()`: Títulos de ejes (fechas en X, cantidades en Y)
+- `_buildLegend()`: Leyenda con colores por tipo
+- `_buildStats()`: Estadísticas resumidas
+- `_getTypeColors()`: Asignación de colores por tipo
+- `_getMaxY()` y `_getMinY()`: Cálculo de rangos del eje Y
 
-**Clase Principal**:
+**Herencia:** Extiende de <mcsymbol name="BaseChartCard" filename="base_chart_card.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\charts\base_chart_card.dart" startline="1" type="class"></mcsymbol>
+
+**Inspiración:** Basado en <mcsymbol name="DailyTrendChart" filename="daily_trend_chart.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\charts\daily_trend_chart.dart" startline="8" type="class"></mcsymbol> pero con múltiples líneas
+
+### 4. Integración en Panel de Plagas
+**Archivo:** <mcfile name="panel_plagas_screen.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\screens\panel_plagas_screen.dart"></mcfile>
+
+**Modificaciones necesarias:**
+
+1. **Import del nuevo widget:**
 ```dart
-class InsectIndicatorCard extends StatelessWidget {
-  final InsectIndicatorData indicator;
-  final bool showTrend;
-  final VoidCallback? onTap;
-  
-  // Métodos:
-  Widget _buildHeader()
-  Widget _buildMainValue()
-  Widget _buildTrendIndicator()
-  Widget _buildAlertBadge()
-  Color _getCardBorderColor()
+import '../widgets/charts/weekly_trend_by_type_chart.dart';
+```
+
+2. **Nuevo método en `_PanelPlagasScreenState`:**
+```dart
+Widget _buildWeeklyTrendChart() {
+  return WeeklyTrendByTypeChart(
+    startDate: _getFilteredStartDate(),
+    endDate: _getFilteredEndDate(),
+    height: 350,
+    showLegend: true,
+  );
 }
 ```
 
-#### 3.3 Widget de Resumen General
-**Archivo Nuevo**: `lib/widgets/charts/insects_summary_card.dart`
-
-**Clase Principal**:
+3. **Métodos auxiliares para filtros:**
 ```dart
-class InsectsSummaryCard extends StatelessWidget {
-  final InsectDashboardSummary summary;
-  final double? height;
-  
-  // Métodos:
-  Widget _buildTotalInsects()
-  Widget _buildActiveAlerts()
-  Widget _buildLastUpdate()
-  Widget _buildQuickStats()
+DateTime? _getFilteredStartDate() {
+  // Calcula fecha inicio basada en _selectedTimeFilter
+}
+
+DateTime? _getFilteredEndDate() {
+  // Calcula fecha fin basada en _selectedTimeFilter
 }
 ```
 
-### **FASE 4: Integración en Dashboard**
-
-#### 4.1 Modificaciones en DashboardScreen
-**Archivo**: <mcfile name="dashboard_screen.dart" path="lib/views/dashboard_screen.dart"></mcfile>
-
-**Nuevas Variables de Estado**:
+4. **Modificación del método `build()` en línea ~95:**
 ```dart
-InsectDashboardSummary? insectSummary;
-bool isLoadingIndicators = true;
-String? indicatorsError;
+// Después de _buildInsectSummaryCard() y antes de _buildInsectIndicatorsGrid()
+_buildWeeklyTrendChart(),
+const SizedBox(height: 24),
 ```
 
-**Nuevos Métodos**:
-```dart
-Future<void> _loadInsectIndicators() async
-Widget _buildInsectIndicatorsSection()
-Widget _buildResponsiveIndicatorsRow()
-Widget _buildMobileIndicatorsLayout()
-Widget _buildTabletIndicatorsLayout()
-```
+## 🔄 Integración con Filtros Existentes
 
-#### 4.2 Integración en Layout Responsive
-**Modificaciones en Métodos Existentes**:
-- `_buildResponsiveSummaryCards()`: Agregar tarjeta de resumen de insectos
-- `build()`: Incluir `_buildInsectIndicatorsSection()` después de las tarjetas de resumen
-- `_refreshAllData()`: Agregar llamada a `_loadInsectIndicators()`
+### Respuesta a Filtros de Tiempo
+El widget responderá a los filtros existentes en <mcsymbol name="_PanelPlagasScreenState" filename="panel_plagas_screen.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\screens\panel_plagas_screen.dart" startline="25" type="class"></mcsymbol>:
 
-### **FASE 5: Configuración y Personalización**
+- **`_selectedTimeFilter`**: Variable que controla el período de tiempo
+- **`_onFilterChanged()`**: Método que se ejecuta al cambiar filtros
+- **Integración**: El widget recibirá las fechas calculadas basadas en el filtro seleccionado
 
-#### 5.1 Pantalla de Configuración de Umbrales
-**Archivo Nuevo**: `lib/views/indicator_settings_screen.dart`
+### Sincronización de Datos
+- Utiliza el mismo patrón de carga que <mcsymbol name="_loadInsectIndicators" filename="panel_plagas_screen.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\screens\panel_plagas_screen.dart" startline="60" type="function"></mcsymbol>
+- Se recarga automáticamente cuando cambian los filtros
+- Maneja estados de loading y error consistentemente
 
-**Clase Principal**:
-```dart
-class IndicatorSettingsScreen extends StatefulWidget {}
+## 🎨 Diseño y UX
 
-class _IndicatorSettingsScreenState extends State<IndicatorSettingsScreen> {
-  Map<String, int> thresholds = {};
-  List<String> insectTypes = [];
-  
-  // Métodos:
-  Future<void> _loadCurrentSettings()
-  Future<void> _saveSettings()
-  Widget _buildThresholdSlider(String insectType, int currentValue)
-  Widget _buildPreviewCard(String insectType)
-}
-```
+### Posicionamiento
+- **Ubicación**: Entre <mcsymbol name="_buildInsectSummaryCard" filename="panel_plagas_screen.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\screens\panel_plagas_screen.dart" startline="200" type="function"></mcsymbol> y <mcsymbol name="_buildInsectIndicatorsGrid" filename="panel_plagas_screen.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\screens\panel_plagas_screen.dart" startline="250" type="function"></mcsymbol>
+- **Espaciado**: 24px arriba y abajo
+- **Responsive**: Adapta a diferentes tamaños de pantalla
 
-#### 5.2 Integración en Menú Principal
-**Archivo**: <mcfile name="side_menu.dart" path="lib/widgets/side_menu.dart"></mcfile>
+### Características Visuales
+- **Tipo**: Gráfica de líneas múltiples (LineChart de fl_chart)
+- **Colores**: Paleta consistente con <mcfile name="app_theme.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\theme\app_theme.dart"></mcfile>
+- **Animaciones**: Transiciones suaves al cargar y cambiar datos
+- **Interactividad**: Tooltips al tocar puntos, leyenda clickeable
+- **Estados**: Loading, error y sin datos manejados por <mcsymbol name="BaseChartCard" filename="base_chart_card.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\charts\base_chart_card.dart" startline="8" type="class"></mcsymbol>
 
-**Agregar Opción de Menú**:
-- Nuevo `ListTile` para "Configuración de Indicadores"
-- Navegación a `IndicatorSettingsScreen`
+### Componentes UI
+- **Título**: "Tendencia Semanal por Tipo"
+- **Subtítulo**: "Últimos 7 días" (dinámico según filtro)
+- **Leyenda**: Muestra tipos de insectos con colores
+- **Estadísticas**: Total por tipo, tendencias, picos
+- **Botón refresh**: Para recargar datos manualmente
 
-### **FASE 6: Optimizaciones y Mejoras**
+## 📁 Archivos Afectados
 
-#### 6.1 Sistema de Cache
-**Archivo Nuevo**: `lib/services/indicator_cache_service.dart`
+### Archivos Nuevos
+1. <mcfile name="weekly_trend_by_type_chart.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\charts\weekly_trend_by_type_chart.dart"></mcfile>
 
-**Funcionalidades**:
-```dart
-class IndicatorCacheService {
-  static const Duration cacheExpiry = Duration(minutes: 5);
-  
-  static Future<void> cacheIndicators(InsectDashboardSummary data)
-  static Future<InsectDashboardSummary?> getCachedIndicators()
-  static bool isCacheValid(DateTime lastUpdate)
-  static Future<void> clearCache()
-}
-```
+### Archivos Modificados
+1. <mcfile name="chart_models.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\models\chart_models.dart"></mcfile> - Agregar modelos de datos
+2. <mcfile name="chart_data_service.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\services\chart_data_service.dart"></mcfile> - Agregar método de servicio
+3. <mcfile name="panel_plagas_screen.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\screens\panel_plagas_screen.dart"></mcfile> - Integrar widget
 
-#### 6.2 Animaciones y Transiciones
-**Mejoras en Widgets**:
-- Animaciones de carga en `InsectIndicatorCard`
-- Transiciones suaves para cambios de estado
-- Efectos visuales para alertas críticas
+### Archivos de Referencia (No modificar)
+- <mcfile name="base_chart_card.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\charts\base_chart_card.dart"></mcfile> - Componente base
+- <mcfile name="daily_trend_chart.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\charts\daily_trend_chart.dart"></mcfile> - Referencia de implementación
+- <mcfile name="stacked_bar_chart.dart" path="c:\Users\adria\OneDrive\Escritorio\Trabajo\ProyectoEmilJordy\Webserver\lib\widgets\charts\stacked_bar_chart.dart"></mcfile> - Referencia para múltiples tipos
 
-#### 6.3 Notificaciones Push (Opcional)
-**Archivo Nuevo**: `lib/services/notification_service.dart`
+## 🔧 Implementación Técnica
 
-**Para Alertas Críticas**:
-- Integración con sistema de notificaciones locales
-- Alertas cuando se superan umbrales críticos
+### Dependencias
+- **fl_chart**: Para gráficas (ya instalado)
+- **http**: Para requests (ya instalado)
+- **intl**: Para formateo de fechas (ya instalado)
 
-### **FASE 7: Testing y Validación**
+### Patrón de Datos
+- Reutiliza endpoint existente `get_promedio_tipo_por_dia.php`
+- Procesa datos para mostrar últimos 7 días
+- Agrupa por fecha y tipo de insecto
+- Calcula tendencias y estadísticas
 
-#### 7.1 Archivos de Test
-**Crear**:
-- `test/services/indicator_config_service_test.dart`
-- `test/widgets/insect_indicator_card_test.dart`
-- `test/models/chart_models_test.dart`
+### Gestión de Estado
+- Patrón StatefulWidget con AnimationController
+- Estados: loading, loaded, error, empty
+- Recarga automática al cambiar filtros
+- Caché local para optimización
 
-#### 7.2 Datos de Prueba
-**Archivo**: `test/fixtures/indicator_test_data.dart`
-- Mock data para diferentes escenarios
-- Casos edge para validación
+### Responsive Design
+- Altura adaptable según contenido
+- Leyenda colapsable en pantallas pequeñas
+- Grid y títulos ajustables
+- Tooltips optimizados para touch
 
-## 📱 Layout Responsive Detallado
-
-### Mobile (< 600px):
-- **Resumen**: 1 columna con tarjeta de resumen general
-- **Indicadores**: Grid 2x2 con scroll vertical
-- **Altura**: Cards de 120px
-
-### Tablet (600-1200px):
-- **Resumen**: 1 fila con 3 tarjetas (Total, Alertas, Última actualización)
-- **Indicadores**: Grid 3x2 o 4x2 según cantidad de tipos
-- **Altura**: Cards de 140px
-
-### Desktop (> 1200px):
-- **Resumen**: 1 fila con 4 tarjetas incluyendo estadísticas adicionales
-- **Indicadores**: Grid 4x3 o 5x2 con mayor densidad
-- **Altura**: Cards de 160px
-
-## 🎨 Especificaciones Visuales
-
-### Colores de Alerta:
-- **Normal**: `AppTheme.primaryBlue` (azul del tema)
-- **Warning**: `Color(0xFFFF9800)` (naranja)
-- **Critical**: `Color(0xFFF44336)` (rojo)
-
-### Iconos de Tendencia:
-- **Up**: `Icons.trending_up` (verde)
-- **Down**: `Icons.trending_down` (rojo)
-- **Stable**: `Icons.trending_flat` (gris)
-
-### Animaciones:
-- **Duración**: 300ms para transiciones
-- **Curva**: `Curves.easeInOut`
-- **Efectos**: Pulse para alertas críticas
-
-## 🔧 Configuración de Dependencias
-
-**No se requieren nuevas dependencias** - El proyecto ya tiene:
-- `fl_chart: ^0.68.0`
-- `http: ^1.1.0`
-- `intl: ^0.19.0`
-
-## 📋 Checklist de Implementación
-
-### Modelos y Servicios:
-- [ ] Crear `InsectIndicatorData` y clases relacionadas
-- [ ] Extender `ChartDataService` con métodos de indicadores
-- [ ] Crear `IndicatorConfigService`
-- [ ] Implementar `IndicatorCacheService`
-
-### Widgets:
-- [ ] Crear `InsectIndicatorsGrid`
-- [ ] Crear `InsectIndicatorCard`
-- [ ] Crear `InsectsSummaryCard`
-- [ ] Integrar en `DashboardScreen`
-
-### Configuración:
-- [ ] Crear `IndicatorSettingsScreen`
-- [ ] Agregar opción en menú lateral
-- [ ] Implementar persistencia de configuración
-
-### Testing:
-- [ ] Tests unitarios para servicios
-- [ ] Tests de widgets
-- [ ] Validación de datos mock
-
-### Optimización:
-- [ ] Sistema de cache
-- [ ] Animaciones y transiciones
-- [ ] Responsive design validation
-
-Este plan aprovecha completamente la infraestructura existente del proyecto, reutiliza patrones establecidos y mantiene la consistencia con el diseño actual del dashboard.
+Este plan proporciona una implementación completa y detallada que se integra perfectamente con la arquitectura existente, reutiliza componentes y servicios disponibles, y mantiene la consistencia visual y funcional del panel de plagas.
         

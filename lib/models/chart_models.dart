@@ -291,10 +291,10 @@ class InsectIndicatorData {
       'cantidadAyer': cantidadAyer,
       'porcentajeCambio': porcentajeCambio,
       'tendencia': tendencia,
-      'colorTipo': colorTipo.value,
+      'colorTipo': colorTipo.toARGB32(),
       'nivelAlerta': {
         'nivel': nivelAlerta.nivel,
-        'color': nivelAlerta.color.value,
+        'color': nivelAlerta.color.toARGB32(),
         'icon': nivelAlerta.icon.codePoint,
       },
       'umbralAlerta': umbralAlerta,
@@ -594,6 +594,168 @@ class AverageTimeIndicator {
     const maxMinutos = 60; // 1 hora es "malo"
     final minutos = tiempoPromedio.inMinutes;
     return (maxMinutos - minutos.clamp(0, maxMinutos)) / maxMinutos;
+  }
+}
+
+// 📊 Modelo para datos de tendencia semanal por tipo de insecto
+class WeeklyTrendByTypeData {
+  final String fecha;
+  final String tipoInsecto;
+  final int cantidad;
+  final DateTime fechaDateTime;
+
+  WeeklyTrendByTypeData({
+    required this.fecha,
+    required this.tipoInsecto,
+    required this.cantidad,
+    required this.fechaDateTime,
+  });
+
+  /// Convierte a FlSpot para fl_chart
+  FlSpot toFlSpot(int index) {
+    return FlSpot(index.toDouble(), cantidad.toDouble());
+  }
+
+  /// Obtiene la fecha formateada para mostrar en gráficas
+  String get fechaFormateada {
+    const meses = [
+      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+    ];
+    return '${fechaDateTime.day}/${meses[fechaDateTime.month - 1]}';
+  }
+
+  /// Factory constructor para crear desde JSON
+  factory WeeklyTrendByTypeData.fromJson(Map<String, dynamic> json) {
+    final fechaStr = json['fecha'] ?? '';
+    DateTime fechaDateTime;
+    
+    try {
+      fechaDateTime = DateTime.parse(fechaStr);
+    } catch (e) {
+      fechaDateTime = DateTime.now();
+    }
+
+    return WeeklyTrendByTypeData(
+      fecha: fechaStr,
+      tipoInsecto: json['tipo_insecto'] ?? json['tipoInsecto'] ?? '',
+      cantidad: int.tryParse(json['cantidad'].toString()) ?? 0,
+      fechaDateTime: fechaDateTime,
+    );
+  }
+
+  /// Convierte el objeto a JSON para serialización
+  Map<String, dynamic> toJson() {
+    return {
+      'fecha': fecha,
+      'tipoInsecto': tipoInsecto,
+      'cantidad': cantidad,
+      'fechaDateTime': fechaDateTime.toIso8601String(),
+    };
+  }
+}
+
+// 📈 Modelo para puntos de tendencia semanal agrupados por fecha
+class WeeklyTrendPoint {
+  final String fecha;
+  final Map<String, int> cantidadesPorTipo;
+  final DateTime fechaDateTime;
+
+  WeeklyTrendPoint({
+    required this.fecha,
+    required this.cantidadesPorTipo,
+    required this.fechaDateTime,
+  });
+
+  /// Obtiene la fecha formateada para mostrar en gráficas
+  String get fechaFormateada {
+    const meses = [
+      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+    ];
+    return '${fechaDateTime.day}/${meses[fechaDateTime.month - 1]}';
+  }
+
+  /// Obtiene el total de insectos para un tipo específico
+  int getTotalForType(String tipo) {
+    return cantidadesPorTipo[tipo] ?? 0;
+  }
+
+  /// Obtiene el total de insectos para todos los tipos en esta fecha
+  int get totalInsectos {
+    return cantidadesPorTipo.values.fold(0, (sum, cantidad) => sum + cantidad);
+  }
+
+  /// Obtiene la lista de tipos de insectos disponibles
+  List<String> get tiposDisponibles {
+    return cantidadesPorTipo.keys.toList()..sort();
+  }
+
+  /// Verifica si hay datos para un tipo específico
+  bool hasDataForType(String tipo) {
+    return cantidadesPorTipo.containsKey(tipo) && cantidadesPorTipo[tipo]! > 0;
+  }
+
+  /// Factory constructor para crear desde JSON
+  factory WeeklyTrendPoint.fromJson(Map<String, dynamic> json) {
+    final fechaStr = json['fecha'] ?? '';
+    DateTime fechaDateTime;
+    
+    try {
+      fechaDateTime = DateTime.parse(fechaStr);
+    } catch (e) {
+      fechaDateTime = DateTime.now();
+    }
+
+    // Procesar cantidades por tipo
+    Map<String, int> cantidades = {};
+    if (json['cantidadesPorTipo'] != null) {
+      final cantidadesData = json['cantidadesPorTipo'] as Map<String, dynamic>;
+      cantidadesData.forEach((tipo, cantidad) {
+        cantidades[tipo] = int.tryParse(cantidad.toString()) ?? 0;
+      });
+    }
+
+    return WeeklyTrendPoint(
+      fecha: fechaStr,
+      cantidadesPorTipo: cantidades,
+      fechaDateTime: fechaDateTime,
+    );
+  }
+
+  /// Factory constructor para crear desde lista de WeeklyTrendByTypeData
+  factory WeeklyTrendPoint.fromTrendDataList(
+    String fecha,
+    List<WeeklyTrendByTypeData> trendDataList,
+  ) {
+    DateTime fechaDateTime;
+    try {
+      fechaDateTime = DateTime.parse(fecha);
+    } catch (e) {
+      fechaDateTime = DateTime.now();
+    }
+
+    Map<String, int> cantidades = {};
+    for (final trendData in trendDataList) {
+      if (trendData.fecha == fecha) {
+        cantidades[trendData.tipoInsecto] = trendData.cantidad;
+      }
+    }
+
+    return WeeklyTrendPoint(
+      fecha: fecha,
+      cantidadesPorTipo: cantidades,
+      fechaDateTime: fechaDateTime,
+    );
+  }
+
+  /// Convierte el objeto a JSON para serialización
+  Map<String, dynamic> toJson() {
+    return {
+      'fecha': fecha,
+      'cantidadesPorTipo': cantidadesPorTipo,
+      'fechaDateTime': fechaDateTime.toIso8601String(),
+    };
   }
 }
 
