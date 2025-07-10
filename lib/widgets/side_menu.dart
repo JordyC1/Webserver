@@ -39,6 +39,9 @@ class SideMenu extends StatelessWidget {
           _buildMenuItem(Icons.dashboard, 'Dashboard', 0),
          // _buildMenuItem(Icons.people, 'Usuarios', 1),
 
+          // Nuevo apartado: Panel de Plagas
+          _buildMenuItem(Icons.pest_control, 'Panel de Plagas', 8),
+
           // Menú expandible de Lecturas
             ExpansionTile(
               leading: Icon(Icons.library_books, color: AppTheme.primaryBlue),
@@ -62,6 +65,7 @@ class SideMenu extends StatelessWidget {
           _buildMenuItem(Icons.notifications, 'Historial de Alertas', 2),
           _buildMenuItem(Icons.exit_to_app, 'Exportar', 3),
           _buildMenuItem(Icons.content_paste_search, 'Auditorias Imagenes', 4),
+          _buildMenuItem(Icons.settings, 'Configuración de Indicadores', 7),
           _buildMenuItem(Icons.build, 'Mantenimiento', 6),
         ],
       ),

@@ -5,15 +5,17 @@ import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import '../theme/app_theme.dart';
 import '../services/alert_service.dart';
+import '../services/chart_data_service.dart';
 // 📊 Importar todas las gráficas implementadas
 import '../widgets/charts/daily_trend_chart.dart';
 import '../widgets/charts/insect_distribution_pie_chart.dart';
 import '../widgets/charts/stacked_bar_chart.dart';
 import '../widgets/charts/alerts_severity_chart.dart';
-import '../widgets/charts/average_time_indicator.dart';
+import '../widgets/charts/average_time_indicator.dart' as widgets;
 import '../widgets/charts/weekly_cumulative_area_chart.dart';
 // ✅ Heatmap ACTIVADO - Import directo
 import '../widgets/charts/hourly_heatmap_chart.dart';
+// Los widgets de indicadores de insectos se movieron al Panel de Plagas
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -37,6 +39,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   Map<String, bool> chartLoadingStates = {};
   Map<String, String?> chartErrors = {};
 
+  // Las variables de indicadores de insectos se movieron al Panel de Plagas
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +63,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     fetchRecentDetections();
     fetchTrampasActivas();
     fetchAlertCount(); // 👈 Obtener la cantidad de alertas al iniciar
+    // Los indicadores de insectos se cargan en el Panel de Plagas
 
     // 🔄 Cambiar timer a 30 segundos para todas las gráficas
     _timer = Timer.periodic(const Duration(seconds: 30), (timer) {
@@ -67,6 +72,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       fetchWeeklyDetections();
       fetchTrampasActivas();
       _updateTime();
+      // Los indicadores de insectos se actualizan en el Panel de Plagas
       _refreshAllCharts(); // 📊 Actualizar todas las gráficas
     });
   }
@@ -147,6 +153,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  // La función de carga de indicadores de insectos se movió al Panel de Plagas
+
 
   void _updateTime() {
     final now = DateTime.now();
@@ -162,6 +170,18 @@ class _DashboardScreenState extends State<DashboardScreen>
       // Esto forzará la actualización de todas las gráficas
       // Las gráficas individuales manejan su propia carga de datos
     });
+  }
+
+  // Método para actualizar todos los datos del dashboard
+  Future<void> _refreshAllData() async {
+    await Future.wait([
+      fetchRecentDetections(),
+      fetchAlertCount(),
+      fetchWeeklyDetections(),
+      fetchTrampasActivas(),
+    ]);
+    _updateTime();
+    _refreshAllCharts();
   }
 
   // 📊 Método para obtener el número de días según el período seleccionado
@@ -252,19 +272,21 @@ class _DashboardScreenState extends State<DashboardScreen>
                 _buildResponsiveSummaryCards(isDesktop, isTablet, isMobile),
                 const SizedBox(height: 24),
 
-                // 📊 2. Fila 1: Tendencia diaria + Distribución por tipo - RESPONSIVO
+                // Las cards de insectos se movieron al Panel de Plagas
+
+                // 📊 3. Fila 1: Tendencia diaria + Distribución por tipo - RESPONSIVO
                 _buildResponsiveRow1(isDesktop, isTablet, isMobile),
                 const SizedBox(height: 16),
 
-                // 📊 3. Fila 2: Barras apiladas + Alertas por severidad - RESPONSIVO
+                // 📊 4. Fila 2: Barras apiladas + Alertas por severidad - RESPONSIVO
                 _buildResponsiveRow2(isDesktop, isTablet, isMobile),
                 const SizedBox(height: 16),
 
-                // 🔥 4. Fila 3: Actividad por hora (heatmap - ancho completo) - RESPONSIVO
+                // 🔥 5. Fila 3: Actividad por hora (heatmap - ancho completo) - RESPONSIVO
                 _buildResponsiveHeatmapRow(isDesktop, isTablet, isMobile),
                 const SizedBox(height: 16),
 
-                // 📈 5. Fila 4: Acumulación semanal + Indicador tiempo promedio - RESPONSIVO
+                // 📈 6. Fila 4: Acumulación semanal + Indicador tiempo promedio - RESPONSIVO
                 _buildResponsiveRow4(isDesktop, isTablet, isMobile),
 
                 const SizedBox(height: 20),
@@ -472,7 +494,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     });
   }
 
-  // 🧩 Tarjetas de resumen responsivas
+  // 🧩 Tarjetas de resumen responsivas (Fase 4: Incluye resumen de insectos)
   Widget _buildResponsiveSummaryCards(
       bool isDesktop, bool isTablet, bool isMobile) {
     if (isMobile) {
@@ -489,8 +511,37 @@ class _DashboardScreenState extends State<DashboardScreen>
               "Trampas Activas", "$trampasActivas", Icons.sensors),
         ],
       );
+    } else if (isTablet) {
+      // Tablet: 2 filas de 2 columnas
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildSummaryCard("Detectados Esta Semana",
+                    "$totalInsectosSemana", Icons.bug_report),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSummaryCard(
+                    "Alertas Activas", "$alertasActivas", Icons.warning),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSummaryCard(
+                    "Trampas Activas", "$trampasActivas", Icons.sensors),
+              ),
+
+            ],
+          ),
+        ],
+      );
     } else {
-      // Tablet y Desktop: 3 columnas
+      // Desktop: 4 columnas
       return Row(
         children: [
           Expanded(
@@ -507,10 +558,13 @@ class _DashboardScreenState extends State<DashboardScreen>
             child: _buildSummaryCard(
                 "Trampas Activas", "$trampasActivas", Icons.sensors),
           ),
+
         ],
       );
     }
   }
+
+  // Las funciones de indicadores de insectos se movieron al Panel de Plagas
 
   // 📈 Fila 1: Tendencia diaria + Distribución por tipo
   Widget _buildResponsiveRow1(bool isDesktop, bool isTablet, bool isMobile) {
@@ -595,7 +649,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         children: [
           WeeklyCumulativeAreaChart(days: _getDaysFromPeriod(), height: 380),
           const SizedBox(height: 16),
-          AverageTimeIndicator(days: _getDaysFromPeriod(), height: 330),
+          widgets.AverageTimeIndicator(days: _getDaysFromPeriod(), height: 330),
           const SizedBox(height: 16),
           _buildDetectionsTableCard(height: 320),
         ],
@@ -612,7 +666,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: AverageTimeIndicator(
+                child: widgets.AverageTimeIndicator(
                     days: _getDaysFromPeriod(), height: 450),
               ),
             ],
@@ -631,7 +685,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             children: [
               Expanded(
                 flex: 2,
-                child: AverageTimeIndicator(
+                child: widgets.AverageTimeIndicator(
                     days: _getDaysFromPeriod(), height: 370),
               ),
               const SizedBox(width: 16),

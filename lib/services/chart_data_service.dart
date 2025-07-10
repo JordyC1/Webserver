@@ -1,8 +1,10 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
 import '../models/chart_models.dart';
-import 'alert_service.dart';
+import 'indicator_cache_service.dart';
+import 'notification_service.dart';
 
 class ChartDataService {
   static const String baseUrl = "http://raspberrypi2.local";
@@ -56,7 +58,7 @@ class ChartDataService {
     try {
       final response = await http
           .get(Uri.parse("$baseUrl/get_lecturas.php"))
-          .timeout(Duration(seconds: 15));
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode != 200) {
         return ChartDataResponse.error(
@@ -70,7 +72,7 @@ class ChartDataService {
         return ChartDataResponse.success(<InsectTypeData>[]);
       }
 
-      // Filtrar últimos N días
+      // Filtrar últimos N días localmente
       final now = DateTime.now();
       final startDate = now.subtract(Duration(days: days));
 
@@ -88,7 +90,7 @@ class ChartDataService {
             totalGeneral += cantidad;
           }
         } catch (e) {
-          print("Error al procesar tipo: ${lectura['tipo']} - $e");
+          // Error al procesar tipo: ${lectura['tipo']} - $e
         }
       }
 
@@ -130,6 +132,89 @@ class ChartDataService {
     }
   }
 
+  // 🥧 Obtener distribución por tipo de insecto para un día específico (filtrado local)
+  static Future<ChartDataResponse<List<InsectTypeData>>>
+      fetchInsectTypeDistributionByDay({DateTime? targetDate}) async {
+    try {
+      final response = await http
+          .get(Uri.parse("$baseUrl/get_lecturas.php"))
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        return ChartDataResponse.error(
+            "Error al conectar con el servidor: ${response.statusCode}");
+      }
+
+      List<Map<String, dynamic>> lecturas =
+          List<Map<String, dynamic>>.from(jsonDecode(response.body));
+
+      if (lecturas.isEmpty) {
+        return ChartDataResponse.success(<InsectTypeData>[]);
+      }
+
+      // Filtrar por día específico localmente
+      final date = targetDate ?? DateTime.now();
+      final targetDay = DateTime(date.year, date.month, date.day);
+      final nextDay = targetDay.add(const Duration(days: 1));
+
+      // Agrupar por tipo para el día específico
+      Map<String, int> cantidadPorTipo = {};
+      int totalGeneral = 0;
+
+      for (var lectura in lecturas) {
+        try {
+          final fecha = DateTime.parse(lectura['fecha']);
+          // Filtrar solo las lecturas del día específico
+          if (fecha.isAfter(targetDay.subtract(const Duration(milliseconds: 1))) && 
+              fecha.isBefore(nextDay)) {
+            final tipo = lectura['tipo'].toString();
+            final cantidad = int.parse(lectura['cantidad'].toString());
+            cantidadPorTipo[tipo] = (cantidadPorTipo[tipo] ?? 0) + cantidad;
+            totalGeneral += cantidad;
+          }
+        } catch (e) {
+          // Error al procesar tipo: ${lectura['tipo']} - $e
+        }
+      }
+
+      if (totalGeneral == 0) {
+        return ChartDataResponse.success(<InsectTypeData>[]);
+      }
+
+      // Crear lista de datos con colores asignados
+      List<InsectTypeData> distribucion = [];
+      List<String> colores = [
+        'blue',
+        'red',
+        'green',
+        'orange',
+        'purple',
+        'teal',
+        'yellow'
+      ];
+      int colorIndex = 0;
+
+      cantidadPorTipo.forEach((tipo, cantidad) {
+        final porcentaje = (cantidad / totalGeneral) * 100;
+        distribucion.add(InsectTypeData(
+          tipo: tipo,
+          cantidad: cantidad,
+          porcentaje: porcentaje,
+          color: colores[colorIndex % colores.length],
+        ));
+        colorIndex++;
+      });
+
+      // Ordenar por cantidad descendente
+      distribucion.sort((a, b) => b.cantidad.compareTo(a.cantidad));
+
+      return ChartDataResponse.success(distribucion);
+    } catch (e) {
+      return ChartDataResponse.error(
+          "Error al procesar distribución por tipo para día específico: $e");
+    }
+  }
+
   // 📊 Obtener datos para barras apiladas por tipo y día
   static Future<ChartDataResponse<List<StackedBarData>>> fetchStackedBarData({int days = 7}) async {
   try {
@@ -161,7 +246,7 @@ class ChartDataService {
 
         datosPorFechaYTipo.putIfAbsent(fechaKey, () => {})[tipo] = promedio;
       } catch (e) {
-        print("Error al procesar datos promedio tipo/día: $e");
+        // Error al procesar datos promedio tipo/día: $e
       }
     }
 
@@ -283,7 +368,7 @@ class ChartDataService {
           maxPromedio = actividadPorHoraDia[diaSemana]![hora]!;
         }
       } catch (e) {
-        print("Error al procesar item de hora: $e");
+        // Error al procesar item de hora: $e
       }
     }
 
@@ -363,7 +448,7 @@ static Future<ChartDataResponse<List<WeeklyCumulativeData>>> fetchWeeklyCumulati
     try {
       final response = await http
           .get(Uri.parse("$baseUrl/get_lecturas.php"))
-          .timeout(Duration(seconds: 15));
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode != 200) {
         return ChartDataResponse.error(
@@ -375,7 +460,7 @@ static Future<ChartDataResponse<List<WeeklyCumulativeData>>> fetchWeeklyCumulati
 
       if (lecturas.isEmpty) {
         return ChartDataResponse.success(AverageTimeIndicator(
-          tiempoPromedio: Duration(hours: 24),
+          tiempoPromedio: const Duration(hours: 24),
           totalDetecciones: 0,
           estado: 'malo',
         ));
@@ -393,13 +478,13 @@ static Future<ChartDataResponse<List<WeeklyCumulativeData>>> fetchWeeklyCumulati
             fechasDetecciones.add(fecha);
           }
         } catch (e) {
-          print("Error al procesar fecha para tiempo promedio: $e");
+          // Error al procesar fecha para tiempo promedio: $e
         }
       }
 
       if (fechasDetecciones.length < 2) {
         return ChartDataResponse.success(AverageTimeIndicator(
-          tiempoPromedio: Duration(hours: 24),
+          tiempoPromedio: const Duration(hours: 24),
           totalDetecciones: fechasDetecciones.length,
           estado: 'malo',
         ));
@@ -442,6 +527,280 @@ static Future<ChartDataResponse<List<WeeklyCumulativeData>>> fetchWeeklyCumulati
     }
   }
 
+  // 📊 FASE 2: Nuevos métodos para indicadores de insectos
+  
+  // 🎯 Obtener resumen completo de indicadores para el dashboard (con cache y notificaciones)
+  static Future<ChartDataResponse<InsectDashboardSummary>> fetchInsectIndicators({
+    int daysForComparison = 1,
+    bool useCache = true,
+  }) async {
+    try {
+      // 🚀 FASE 6: Verificar cache primero
+      if (useCache) {
+        final cachedData = await IndicatorCacheService.getCachedIndicators();
+        if (cachedData != null) {
+          // Verificar notificaciones con datos del cache
+          await NotificationService.checkAndNotifyAlerts(cachedData);
+          return ChartDataResponse.success(cachedData);
+        }
+      }
+      
+      // Obtener todas las lecturas y filtrar localmente
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      
+      // Calcular el período según daysForComparison
+      DateTime startDate;
+      DateTime endDate = today.add(const Duration(days: 1)); // Hasta mañana
+      
+      if (daysForComparison == 1) {
+        // Solo hoy
+        startDate = today;
+      } else {
+        // Últimos N días
+        startDate = today.subtract(Duration(days: daysForComparison - 1));
+      }
+      
+      // Obtener todas las lecturas de una sola vez
+      final allLecturasResponse = await http
+          .get(Uri.parse("$baseUrl/get_lecturas.php"))
+          .timeout(const Duration(seconds: 15));
+          
+      // Obtener umbrales de configuración
+      final thresholdsResponse = await fetchInsectThresholds();
+      if (!thresholdsResponse.success) {
+        return ChartDataResponse.error("Error al obtener umbrales: ${thresholdsResponse.errorMessage}");
+      }
+      
+      // Obtener alertas activas
+      final alertsResponse = await fetchAlertsBySeverity();
+      int totalAlertas = 0;
+      if (alertsResponse.success) {
+        totalAlertas = alertsResponse.data!.fold(0, (sum, alert) => sum + alert.cantidad);
+      }
+      
+      if (allLecturasResponse.statusCode != 200) {
+        return ChartDataResponse.error("Error al conectar con el servidor: ${allLecturasResponse.statusCode}");
+      }
+      
+      // Procesar todas las lecturas y filtrar localmente
+      final allLecturas = List<Map<String, dynamic>>.from(jsonDecode(allLecturasResponse.body));
+      
+      // Calcular período anterior para comparación
+      final previousStartDate = startDate.subtract(Duration(days: daysForComparison));
+      final previousEndDate = startDate;
+      
+      // Agrupar por tipo con filtrado local
+      Map<String, int> currentPeriodCounts = {};
+      Map<String, int> previousPeriodCounts = {};
+      
+      for (var lectura in allLecturas) {
+        try {
+          final fecha = DateTime.parse(lectura['fecha']);
+          final tipo = lectura['tipo'].toString();
+          final cantidad = int.tryParse(lectura['cantidad'].toString()) ?? 0;
+          
+          // Filtrar lecturas del período actual
+          if (fecha.isAfter(startDate.subtract(const Duration(milliseconds: 1))) && 
+              fecha.isBefore(endDate)) {
+            currentPeriodCounts[tipo] = (currentPeriodCounts[tipo] ?? 0) + cantidad;
+          }
+          
+          // Filtrar lecturas del período anterior
+          if (fecha.isAfter(previousStartDate.subtract(const Duration(milliseconds: 1))) && 
+              fecha.isBefore(previousEndDate)) {
+            previousPeriodCounts[tipo] = (previousPeriodCounts[tipo] ?? 0) + cantidad;
+          }
+        } catch (e) {
+          // Error al procesar lectura: $e
+        }
+      }
+      
+      // Crear indicadores
+      final thresholds = thresholdsResponse.data!;
+      final allTypes = {...currentPeriodCounts.keys, ...previousPeriodCounts.keys};
+      
+      List<InsectIndicatorData> indicadores = [];
+      final colors = [
+        const Color(0xFF2196F3), // blue
+        const Color(0xFFF44336), // red
+        const Color(0xFF4CAF50), // green
+        const Color(0xFFFF9800), // orange
+        const Color(0xFF9C27B0), // purple
+        const Color(0xFF009688), // teal
+        const Color(0xFFFFEB3B), // yellow
+      ];
+      
+      int colorIndex = 0;
+      for (String tipo in allTypes) {
+        final cantidadActual = currentPeriodCounts[tipo] ?? 0;
+        final cantidadAnterior = previousPeriodCounts[tipo] ?? 0;
+        final umbral = thresholds[tipo] ?? 50; // umbral por defecto
+        
+        indicadores.add(InsectIndicatorData.fromBasicData(
+          tipo: tipo,
+          cantidadHoy: cantidadActual,
+          cantidadAyer: cantidadAnterior,
+          color: colors[colorIndex % colors.length],
+          umbral: umbral,
+          tieneAlerta: cantidadActual >= umbral,
+        ));
+        
+        colorIndex++;
+      }
+      
+      // Crear resumen
+      final summary = InsectDashboardSummary.fromData(
+        indicadores: indicadores,
+        totalAlertas: totalAlertas,
+      );
+      
+      // 🚀 FASE 6: Cachear los nuevos datos
+      if (useCache) {
+        await IndicatorCacheService.cacheIndicators(summary);
+      }
+      
+      // 🚀 FASE 6: Verificar y enviar notificaciones para alertas críticas
+      await NotificationService.checkAndNotifyAlerts(summary);
+      
+      return ChartDataResponse.success(summary);
+      
+    } catch (e) {
+      return ChartDataResponse.error("Error al procesar indicadores: $e");
+    }
+  }
+  
+  // 🐛 Obtener indicadores específicos por tipo de insecto
+  static Future<ChartDataResponse<List<InsectIndicatorData>>> fetchInsectTypeIndicators({
+    DateTime? targetDate,
+  }) async {
+    try {
+      final date = targetDate ?? DateTime.now();
+      final today = DateTime(date.year, date.month, date.day);
+      final yesterday = today.subtract(const Duration(days: 1));
+      final nextDay = today.add(const Duration(days: 1));
+      
+      // Obtener todas las lecturas de una sola vez
+      final allLecturasResponse = await http
+          .get(Uri.parse("$baseUrl/get_lecturas.php"))
+          .timeout(const Duration(seconds: 15));
+          
+      if (allLecturasResponse.statusCode != 200) {
+        return ChartDataResponse.error("Error al conectar con el servidor: ${allLecturasResponse.statusCode}");
+      }
+      
+      // Obtener umbrales
+      final thresholdsResponse = await fetchInsectThresholds();
+      final thresholds = thresholdsResponse.success ? thresholdsResponse.data! : <String, int>{};
+      
+      // Procesar todas las lecturas y filtrar localmente
+      final allLecturas = List<Map<String, dynamic>>.from(jsonDecode(allLecturasResponse.body));
+      
+      Map<String, int> todayCounts = {};
+      Map<String, int> yesterdayCounts = {};
+      
+      for (var lectura in allLecturas) {
+        try {
+          final fecha = DateTime.parse(lectura['fecha']);
+          final tipo = lectura['tipo'].toString();
+          final cantidad = int.tryParse(lectura['cantidad'].toString()) ?? 0;
+          
+          // Filtrar lecturas de hoy
+          if (fecha.isAfter(today.subtract(const Duration(milliseconds: 1))) && 
+              fecha.isBefore(nextDay)) {
+            todayCounts[tipo] = (todayCounts[tipo] ?? 0) + cantidad;
+          }
+          
+          // Filtrar lecturas de ayer
+          if (fecha.isAfter(yesterday.subtract(const Duration(milliseconds: 1))) && 
+              fecha.isBefore(today)) {
+            yesterdayCounts[tipo] = (yesterdayCounts[tipo] ?? 0) + cantidad;
+          }
+        } catch (e) {
+          // Error al procesar lectura: $e
+        }
+      }
+      
+      // Crear indicadores
+      final allTypes = {...todayCounts.keys, ...yesterdayCounts.keys};
+      List<InsectIndicatorData> indicadores = [];
+      
+      final colors = [
+        const Color(0xFF2196F3), // blue
+        const Color(0xFFF44336), // red
+        const Color(0xFF4CAF50), // green
+        const Color(0xFFFF9800), // orange
+        const Color(0xFF9C27B0), // purple
+        const Color(0xFF009688), // teal
+        const Color(0xFFFFEB3B), // yellow
+      ];
+      
+      int colorIndex = 0;
+      for (String tipo in allTypes) {
+        final cantidadHoy = todayCounts[tipo] ?? 0;
+        final cantidadAyer = yesterdayCounts[tipo] ?? 0;
+        final umbral = thresholds[tipo] ?? 50;
+        
+        indicadores.add(InsectIndicatorData.fromBasicData(
+          tipo: tipo,
+          cantidadHoy: cantidadHoy,
+          cantidadAyer: cantidadAyer,
+          color: colors[colorIndex % colors.length],
+          umbral: umbral,
+          tieneAlerta: cantidadHoy >= umbral,
+        ));
+        
+        colorIndex++;
+      }
+      
+      // Ordenar por cantidad descendente
+      indicadores.sort((a, b) => b.cantidadHoy.compareTo(a.cantidadHoy));
+      
+      return ChartDataResponse.success(indicadores);
+      
+    } catch (e) {
+      return ChartDataResponse.error("Error al procesar indicadores por tipo: $e");
+    }
+  }
+  
+  // ⚙️ Obtener umbrales de configuración para alertas
+  static Future<ChartDataResponse<Map<String, int>>> fetchInsectThresholds() async {
+    try {
+      // Intentar obtener desde el servidor (si existe endpoint)
+      final response = await http
+          .get(Uri.parse("$baseUrl/get_configuracion_plagas.php"))
+          .timeout(const Duration(seconds: 10));
+          
+      if (response.statusCode == 200) {
+        final data = List<Map<String, dynamic>>.from(jsonDecode(response.body));
+        Map<String, int> thresholds = {};
+        
+        for (var config in data) {
+          final tipo = config['tipo'].toString();
+          final umbral = int.tryParse(config['umbral_alerta'].toString()) ?? 50;
+          thresholds[tipo] = umbral;
+        }
+        
+        return ChartDataResponse.success(thresholds);
+      }
+    } catch (e) {
+      // No se pudo obtener configuración del servidor, usando valores por defecto: $e
+    }
+    
+    // Valores por defecto si no hay configuración en el servidor
+    const defaultThresholds = {
+      'mosca': 50,
+      'mosquito': 30,
+      'abeja': 20,
+      'avispa': 25,
+      'polilla': 40,
+      'escarabajo': 35,
+      'chinche': 45,
+    };
+    
+    return ChartDataResponse.success(defaultThresholds);
+  }
+
   // 🔄 Método para obtener todos los datos de una vez (opcional, para optimización)
   static Future<Map<String, dynamic>> fetchAllChartData() async {
     final results = await Future.wait([
@@ -462,6 +821,33 @@ static Future<ChartDataResponse<List<WeeklyCumulativeData>>> fetchWeeklyCumulati
       'hourlyActivity': results[4],
       'weeklyCumulative': results[5],
       'averageTime': results[6],
+    };
+  }
+  
+  // 🎯 Método extendido para obtener todos los datos incluyendo indicadores
+  static Future<Map<String, dynamic>> fetchAllDashboardData() async {
+    final results = await Future.wait([
+      fetchDailyTrendData(),
+      fetchInsectTypeDistribution(),
+      fetchStackedBarData(),
+      fetchAlertsBySeverity(),
+      fetchHourlyActivityData(),
+      fetchWeeklyCumulativeData(),
+      calculateAverageTimeBetweenDetections(),
+      fetchInsectIndicators(),
+      fetchInsectTypeIndicators(),
+    ]);
+
+    return {
+      'dailyTrend': results[0],
+      'insectDistribution': results[1],
+      'stackedBar': results[2],
+      'alertsSeverity': results[3],
+      'hourlyActivity': results[4],
+      'weeklyCumulative': results[5],
+      'averageTime': results[6],
+      'insectIndicators': results[7],
+      'typeIndicators': results[8],
     };
   }
 }

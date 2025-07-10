@@ -12,6 +12,8 @@ import 'historial_alertas_screen.dart';
 import 'exportar_screen.dart';
 import 'auditoriascreen.dart';
 import 'ver_capturas.dart';
+import 'indicator_settings_screen.dart';
+import 'panel_plagas_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -27,15 +29,17 @@ class _MainScreenState extends State<MainScreen> {
   String _correoUsuario = '';
 
   final List<Widget> _pages = [
-    DashboardScreen(),
+    DashboardScreen(),                // 0
     //UsuariosScreen(),
-    VerLecturasScreen(),
+    VerLecturasScreen(),             // 1
    // AlertasScreen(),
-    HistorialAlertasScreen(),
-    ExportarScreen(),
-    AuditoriaScreen(),
-    VerCapturasScreen(),
-    MantenimientoScreen(),
+    HistorialAlertasScreen(),        // 2
+    ExportarScreen(),                // 3
+    AuditoriaScreen(),               // 4
+    VerCapturasScreen(),             // 5
+    MantenimientoScreen(),           // 6
+    IndicatorSettingsScreen(),       // 7
+    PanelPlagasScreen(),             // 8
   ];
 
   @override

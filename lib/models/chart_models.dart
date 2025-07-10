@@ -41,6 +41,57 @@ class InsectTypeData {
     required this.color,
   });
 
+  // 🎯 Métodos agregados para indicadores (Fase 1)
+  
+  /// Calcula el nivel de alerta basado en un umbral
+  AlertLevel calculateAlertLevel(int threshold) {
+    if (cantidad >= threshold * 1.5) {
+      return AlertLevel(
+        nivel: 'critical',
+        color: const Color(0xFFF44336), // Rojo
+        icon: Icons.warning,
+      );
+    } else if (cantidad >= threshold) {
+      return AlertLevel(
+        nivel: 'warning',
+        color: const Color(0xFFFF9800), // Naranja
+        icon: Icons.info,
+      );
+    } else {
+      return AlertLevel(
+        nivel: 'normal',
+        color: const Color(0xFF4CAF50), // Verde
+        icon: Icons.check_circle,
+      );
+    }
+  }
+
+  /// Calcula el porcentaje de cambio respecto a un valor anterior
+  double calculateTrendPercentage(int previousValue) {
+    if (previousValue == 0) {
+      return cantidad > 0 ? 100.0 : 0.0;
+    }
+    return ((cantidad - previousValue) / previousValue) * 100;
+  }
+
+  /// Obtiene el icono de tendencia basado en el cambio porcentual
+  IconData getTrendIcon() {
+    // Necesitamos un valor anterior para calcular la tendencia
+    // Este método será usado en conjunto con calculateTrendPercentage
+    return Icons.trending_flat; // Por defecto, estable
+  }
+
+  /// Obtiene el icono de tendencia basado en un porcentaje de cambio específico
+  static IconData getTrendIconFromPercentage(double percentage) {
+    if (percentage > 5.0) {
+      return Icons.trending_up;
+    } else if (percentage < -5.0) {
+      return Icons.trending_down;
+    } else {
+      return Icons.trending_flat;
+    }
+  }
+
   // Convertir a PieChartSectionData para fl_chart
   PieChartSectionData toPieChartSection(bool isSelected) {
     return PieChartSectionData(
@@ -78,6 +129,295 @@ class InsectTypeData {
       default:
         return const Color(0xFF2796F4);
     }
+  }
+}
+
+// 🎯 Modelo para nivel de alerta (Fase 1)
+class AlertLevel {
+  final String nivel; // 'normal', 'warning', 'critical'
+  final Color color;
+  final IconData icon;
+
+  AlertLevel({
+    required this.nivel,
+    required this.color,
+    required this.icon,
+  });
+
+  /// Obtiene el texto capitalizado del nivel
+  String get nivelCapitalizado {
+    switch (nivel) {
+      case 'normal':
+        return 'Normal';
+      case 'warning':
+        return 'Advertencia';
+      case 'critical':
+        return 'Crítico';
+      default:
+        return nivel[0].toUpperCase() + nivel.substring(1);
+    }
+  }
+
+  /// Verifica si el nivel es crítico
+  bool get isCritical => nivel == 'critical';
+
+  /// Verifica si el nivel es de advertencia
+  bool get isWarning => nivel == 'warning';
+
+  /// Verifica si el nivel es normal
+  bool get isNormal => nivel == 'normal';
+}
+
+// 🎯 Modelo para datos de indicador de insecto (Fase 1)
+class InsectIndicatorData {
+  final String tipoInsecto;
+  final int cantidadHoy;
+  final int cantidadAyer;
+  final double porcentajeCambio;
+  final String tendencia; // 'up', 'down', 'stable'
+  final Color colorTipo;
+  final AlertLevel nivelAlerta;
+  final int umbralAlerta;
+  final bool tieneAlertaActiva;
+
+  InsectIndicatorData({
+    required this.tipoInsecto,
+    required this.cantidadHoy,
+    required this.cantidadAyer,
+    required this.porcentajeCambio,
+    required this.tendencia,
+    required this.colorTipo,
+    required this.nivelAlerta,
+    required this.umbralAlerta,
+    required this.tieneAlertaActiva,
+  });
+
+  /// Obtiene el icono de tendencia basado en la tendencia
+  IconData get iconoTendencia {
+    switch (tendencia) {
+      case 'up':
+        return Icons.trending_up;
+      case 'down':
+        return Icons.trending_down;
+      case 'stable':
+      default:
+        return Icons.trending_flat;
+    }
+  }
+
+  /// Obtiene el color de la tendencia
+  Color get colorTendencia {
+    switch (tendencia) {
+      case 'up':
+        return const Color(0xFF4CAF50); // Verde
+      case 'down':
+        return const Color(0xFFF44336); // Rojo
+      case 'stable':
+      default:
+        return const Color(0xFF9E9E9E); // Gris
+    }
+  }
+
+  /// Obtiene el texto formateado del porcentaje de cambio
+  String get porcentajeCambioFormateado {
+    final signo = porcentajeCambio >= 0 ? '+' : '';
+    return '$signo${porcentajeCambio.toStringAsFixed(1)}%';
+  }
+
+  /// Verifica si hay un cambio significativo (mayor a 5%)
+  bool get tieneCambioSignificativo => porcentajeCambio.abs() > 5.0;
+
+  /// Factory constructor para crear desde datos básicos
+  factory InsectIndicatorData.fromBasicData({
+    required String tipo,
+    required int cantidadHoy,
+    required int cantidadAyer,
+    required Color color,
+    required int umbral,
+    bool tieneAlerta = false,
+  }) {
+    final porcentaje = cantidadAyer == 0 
+        ? (cantidadHoy > 0 ? 100.0 : 0.0)
+        : ((cantidadHoy - cantidadAyer) / cantidadAyer) * 100;
+    
+    String tendencia;
+    if (porcentaje > 5.0) {
+      tendencia = 'up';
+    } else if (porcentaje < -5.0) {
+      tendencia = 'down';
+    } else {
+      tendencia = 'stable';
+    }
+
+    AlertLevel nivel;
+    if (cantidadHoy >= umbral * 1.5) {
+      nivel = AlertLevel(
+        nivel: 'critical',
+        color: const Color(0xFFF44336),
+        icon: Icons.warning,
+      );
+    } else if (cantidadHoy >= umbral) {
+      nivel = AlertLevel(
+        nivel: 'warning',
+        color: const Color(0xFFFF9800),
+        icon: Icons.info,
+      );
+    } else {
+      nivel = AlertLevel(
+        nivel: 'normal',
+        color: const Color(0xFF4CAF50),
+        icon: Icons.check_circle,
+      );
+    }
+
+    return InsectIndicatorData(
+      tipoInsecto: tipo,
+      cantidadHoy: cantidadHoy,
+      cantidadAyer: cantidadAyer,
+      porcentajeCambio: porcentaje,
+      tendencia: tendencia,
+      colorTipo: color,
+      nivelAlerta: nivel,
+      umbralAlerta: umbral,
+      tieneAlertaActiva: tieneAlerta,
+    );
+  }
+
+  /// Convierte el objeto a JSON para serialización
+  Map<String, dynamic> toJson() {
+    return {
+      'tipoInsecto': tipoInsecto,
+      'cantidadHoy': cantidadHoy,
+      'cantidadAyer': cantidadAyer,
+      'porcentajeCambio': porcentajeCambio,
+      'tendencia': tendencia,
+      'colorTipo': colorTipo.value,
+      'nivelAlerta': {
+        'nivel': nivelAlerta.nivel,
+        'color': nivelAlerta.color.value,
+        'icon': nivelAlerta.icon.codePoint,
+      },
+      'umbralAlerta': umbralAlerta,
+      'tieneAlertaActiva': tieneAlertaActiva,
+    };
+  }
+
+  /// Factory constructor para crear desde JSON
+  factory InsectIndicatorData.fromJson(Map<String, dynamic> json) {
+    final nivelAlertaData = json['nivelAlerta'] as Map<String, dynamic>;
+    
+    return InsectIndicatorData(
+      tipoInsecto: json['tipoInsecto'] ?? '',
+      cantidadHoy: json['cantidadHoy'] ?? 0,
+      cantidadAyer: json['cantidadAyer'] ?? 0,
+      porcentajeCambio: (json['porcentajeCambio'] ?? 0.0).toDouble(),
+      tendencia: json['tendencia'] ?? 'stable',
+      colorTipo: Color(json['colorTipo'] ?? 0xFF2796F4),
+      nivelAlerta: AlertLevel(
+        nivel: nivelAlertaData['nivel'] ?? 'normal',
+        color: Color(nivelAlertaData['color'] ?? 0xFF4CAF50),
+        icon: IconData(nivelAlertaData['icon'] ?? Icons.check_circle.codePoint, fontFamily: 'MaterialIcons'),
+      ),
+      umbralAlerta: json['umbralAlerta'] ?? 0,
+      tieneAlertaActiva: json['tieneAlertaActiva'] ?? false,
+    );
+  }
+}
+
+// 🎯 Modelo para resumen del dashboard de insectos (Fase 1)
+class InsectDashboardSummary {
+  final List<InsectIndicatorData> indicadores;
+  final int totalInsectosHoy;
+  final int totalAlertasActivas;
+  final DateTime ultimaActualizacion;
+
+  InsectDashboardSummary({
+    required this.indicadores,
+    required this.totalInsectosHoy,
+    required this.totalAlertasActivas,
+    required this.ultimaActualizacion,
+  });
+
+  /// Obtiene el número de indicadores con alertas críticas
+  int get indicadoresCriticos {
+    return indicadores.where((i) => i.nivelAlerta.isCritical).length;
+  }
+
+  /// Obtiene el número de indicadores con advertencias
+  int get indicadoresAdvertencia {
+    return indicadores.where((i) => i.nivelAlerta.isWarning).length;
+  }
+
+  /// Obtiene el número de indicadores normales
+  int get indicadoresNormales {
+    return indicadores.where((i) => i.nivelAlerta.isNormal).length;
+  }
+
+  /// Obtiene el indicador con mayor cantidad del día
+  InsectIndicatorData? get indicadorMayorCantidad {
+    if (indicadores.isEmpty) return null;
+    return indicadores.reduce((a, b) => a.cantidadHoy > b.cantidadHoy ? a : b);
+  }
+
+  /// Obtiene el indicador con mayor cambio porcentual positivo
+  InsectIndicatorData? get indicadorMayorCrecimiento {
+    if (indicadores.isEmpty) return null;
+    final crecientes = indicadores.where((i) => i.porcentajeCambio > 0);
+    if (crecientes.isEmpty) return null;
+    return crecientes.reduce((a, b) => a.porcentajeCambio > b.porcentajeCambio ? a : b);
+  }
+
+  /// Obtiene el texto formateado de la última actualización
+  String get ultimaActualizacionFormateada {
+    final ahora = DateTime.now();
+    final diferencia = ahora.difference(ultimaActualizacion);
+    
+    if (diferencia.inMinutes < 1) {
+      return 'Hace unos segundos';
+    } else if (diferencia.inMinutes < 60) {
+      return 'Hace ${diferencia.inMinutes} min';
+    } else if (diferencia.inHours < 24) {
+      return 'Hace ${diferencia.inHours} h';
+    } else {
+      return 'Hace ${diferencia.inDays} días';
+    }
+  }
+
+  /// Factory constructor para crear desde listas básicas
+  factory InsectDashboardSummary.fromData({
+    required List<InsectIndicatorData> indicadores,
+    required int totalAlertas,
+  }) {
+    final totalHoy = indicadores.fold<int>(0, (sum, i) => sum + i.cantidadHoy);
+    
+    return InsectDashboardSummary(
+      indicadores: indicadores,
+      totalInsectosHoy: totalHoy,
+      totalAlertasActivas: totalAlertas,
+      ultimaActualizacion: DateTime.now(),
+    );
+  }
+
+  /// Convierte el objeto a JSON para serialización
+  Map<String, dynamic> toJson() {
+    return {
+      'indicadores': indicadores.map((i) => i.toJson()).toList(),
+      'totalInsectosHoy': totalInsectosHoy,
+      'totalAlertasActivas': totalAlertasActivas,
+      'ultimaActualizacion': ultimaActualizacion.toIso8601String(),
+    };
+  }
+
+  /// Factory constructor para crear desde JSON
+  factory InsectDashboardSummary.fromJson(Map<String, dynamic> json) {
+    return InsectDashboardSummary(
+      indicadores: (json['indicadores'] as List)
+          .map((i) => InsectIndicatorData.fromJson(i))
+          .toList(),
+      totalInsectosHoy: json['totalInsectosHoy'] ?? 0,
+      totalAlertasActivas: json['totalAlertasActivas'] ?? 0,
+      ultimaActualizacion: DateTime.parse(json['ultimaActualizacion']),
+    );
   }
 }
 
@@ -189,7 +529,7 @@ class HourlyActivityData {
   Color get colorIntensidad {
     // Gradiente del azul del tema
     const baseColor = Color(0xFF2796F4);
-    return baseColor.withOpacity(0.1 + (intensidad * 0.9));
+    return baseColor.withValues(alpha: 0.1 + (intensidad * 0.9));
   }
 }
 
@@ -286,4 +626,8 @@ class ChartDataResponse<T> {
       timestamp: DateTime.now(),
     );
   }
+
+  // Getter methods for compatibility
+  bool get isSuccess => success;
+  String? get errorMessage => error;
 }
