@@ -10,45 +10,87 @@ class ChartDataService {
   static const String baseUrl = "http://raspberrypi2.local";
 
   // 📊 Obtener datos de tendencia diaria de insectos
-  static Future<ChartDataResponse<List<DailyTrendPoint>>> fetchDailyTrendData({int days = 14}) async {
+  static Future<ChartDataResponse<List<DailyTrendPoint>>> fetchDailyTrendData({int days = 7}) async {
   try {
     final now = DateTime.now();
-    final startDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: days - 1));
-    final formattedStart = DateFormat('yyyy-MM-dd').format(startDate);
-    final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime(now.year, now.month, now.day, 23, 59, 59));
 
-    final response = await http
-        .get(Uri.parse("$baseUrl/get_promedio_diario.php?inicio=$formattedStart&fin=$formattedEnd"))
-        .timeout(const Duration(seconds: 15));
+  if (days == 1) {
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    final formattedStart = DateFormat('yyyy-MM-dd HH:mm:ss').format(startOfDay);
+    final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(endOfDay);
+
+    final response = await http.get(
+      Uri.parse("$baseUrl/get_incrementos_por_hora.php?inicio=$formattedStart&fin=$formattedEnd"),
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
-      return ChartDataResponse.error("Error al conectar con el servidor: ${response.statusCode}");
+      return ChartDataResponse.error("Error al obtener datos por hora");
     }
 
     List<dynamic> jsonData = jsonDecode(response.body);
-    Map<String, int> datosPorFecha = {
-      for (var item in jsonData)
-        item['fecha']: int.tryParse(item['promedio'].toString()) ?? 0,
-    };
+    Map<int, int> datosPorHora = {};
 
-    List<DailyTrendPoint> puntos = [];
+    for (var item in jsonData) {
+      final hora = int.tryParse(item['hora'].toString()) ?? 0;
+      final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
+      datosPorHora[hora] = (datosPorHora[hora] ?? 0) + cantidad;
+    }
+
+    // Llenar todas las 24 horas
+    List<DailyTrendPoint> datos = [];
+    for (int h = 0; h < 24; h++) {
+      datos.add(DailyTrendPoint(
+        fecha: DateTime(now.year, now.month, now.day, h),
+        totalInsectos: datosPorHora[h] ?? 0,
+        fechaFormateada: "${h.toString().padLeft(2, '0')}:00",
+      ));
+    }
+
+    return ChartDataResponse.success(datos);
+  }
+
+    // Si no es "Hoy", usar datos diarios
+    final startDate = now.subtract(Duration(days: days - 1));
+    final formattedStart = DateFormat('yyyy-MM-dd').format(startDate);
+    final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
+
+    final response = await http.get(
+      Uri.parse("$baseUrl/get_incrementos_por_dia.php?inicio=$formattedStart&fin=$formattedEnd"),
+    ).timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      return ChartDataResponse.error("Error al obtener datos por día");
+    }
+
+    List<dynamic> jsonData = jsonDecode(response.body);
+    Map<String, int> datosPorFecha = {};
+
+    for (var item in jsonData) {
+      final fecha = item['fecha'];
+      final total = int.tryParse(item['cantidad'].toString()) ?? 0;
+      datosPorFecha[fecha] = (datosPorFecha[fecha] ?? 0) + total;
+    }
+
+    List<DailyTrendPoint> datos = [];
     for (int i = 0; i < days; i++) {
       final fecha = startDate.add(Duration(days: i));
       final fechaKey = DateFormat('yyyy-MM-dd').format(fecha);
-      final promedio = datosPorFecha[fechaKey] ?? 0;
+      final cantidad = datosPorFecha[fechaKey] ?? 0;
 
-      puntos.add(DailyTrendPoint(
+      datos.add(DailyTrendPoint(
         fecha: fecha,
-        totalInsectos: promedio,
+        totalInsectos: cantidad,
         fechaFormateada: DateFormat('dd/MM').format(fecha),
       ));
     }
 
-    return ChartDataResponse.success(puntos);
+    return ChartDataResponse.success(datos);
   } catch (e) {
-    return ChartDataResponse.error("Error al procesar datos de tendencia: $e");
+    return ChartDataResponse.error("Error al procesar datos de tendencia diaria: $e");
   }
 }
+
 
 
 
@@ -216,16 +258,62 @@ class ChartDataService {
   }
 
   // 📊 Obtener datos para barras apiladas por tipo y día
-  static Future<ChartDataResponse<List<StackedBarData>>> fetchStackedBarData({int days = 7}) async {
+static Future<ChartDataResponse<List<StackedBarData>>> fetchStackedBarData({int days = 7}) async {
   try {
     final now = DateTime.now();
+
+    if (days == 1) {
+      // 🔄 Por hora si es HOY
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+      final formattedStart = DateFormat('yyyy-MM-dd HH:mm:ss').format(startOfDay);
+      final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(endOfDay);
+
+      final response = await http.get(
+        Uri.parse("$baseUrl/get_incrementos_por_hora.php?inicio=$formattedStart&fin=$formattedEnd"),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        return ChartDataResponse.error("Error al conectar con el servidor (hora): ${response.statusCode}");
+      }
+
+      List<dynamic> jsonData = jsonDecode(response.body);
+      Map<int, Map<String, int>> datosPorHoraYTipo = {};
+
+      for (var item in jsonData) {
+        try {
+          final hora = int.tryParse(item['hora'].toString()) ?? 0;
+          final tipo = item['tipo'].toString();
+          final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
+
+          datosPorHoraYTipo.putIfAbsent(hora, () => {})[tipo] = cantidad;
+        } catch (_) {}
+      }
+
+      List<StackedBarData> datosApilados = [];
+      for (int h = 0; h < 24; h++) {
+        final insectosPorTipo = datosPorHoraYTipo[h] ?? <String, int>{};
+        final totalHora = insectosPorTipo.values.fold(0, (sum, cantidad) => sum + cantidad);
+
+        datosApilados.add(StackedBarData(
+          fecha: now,
+          fechaFormateada: "${h.toString().padLeft(2, '0')}:00",
+          insectosPorTipo: insectosPorTipo,
+          totalDia: totalHora,
+        ));
+      }
+
+      return ChartDataResponse.success(datosApilados);
+    }
+
+    // 🔄 Por día si es más de un día
     final startDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: days - 1));
     final formattedStart = DateFormat('yyyy-MM-dd').format(startDate);
     final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime(now.year, now.month, now.day, 23, 59, 59));
 
-    final response = await http
-        .get(Uri.parse("$baseUrl/get_promedio_tipo_por_dia.php?inicio=$formattedStart&fin=$formattedEnd"))
-        .timeout(const Duration(seconds: 15));
+    final response = await http.get(
+      Uri.parse("$baseUrl/get_incrementos_por_dia.php?inicio=$formattedStart&fin=$formattedEnd"),
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       return ChartDataResponse.error("Error al conectar con el servidor: ${response.statusCode}");
@@ -242,12 +330,10 @@ class ChartDataService {
       try {
         final fechaKey = item['fecha'];
         final tipo = item['tipo'].toString();
-        final promedio = int.tryParse(item['promedio'].toString()) ?? 0;
+        final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
 
-        datosPorFechaYTipo.putIfAbsent(fechaKey, () => {})[tipo] = promedio;
-      } catch (e) {
-        // Error al procesar datos promedio tipo/día: $e
-      }
+        datosPorFechaYTipo.putIfAbsent(fechaKey, () => {})[tipo] = cantidad;
+      } catch (_) {}
     }
 
     List<StackedBarData> datosApilados = [];
@@ -270,6 +356,8 @@ class ChartDataService {
     return ChartDataResponse.error("Error al procesar datos de barras apiladas: $e");
   }
 }
+
+
 
 
 
@@ -327,119 +415,171 @@ class ChartDataService {
 }
 
 
-  static Future<ChartDataResponse<List<HourlyActivityData>>> fetchHourlyActivityData({int days = 14}) async {
-  try {
-    final now = DateTime.now();
-    final startDate = now.subtract(Duration(days: days));
-    final formattedStart = DateFormat('yyyy-MM-dd').format(startDate);
-    final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime(now.year, now.month, now.day, 23, 59, 59));
+    static Future<ChartDataResponse<List<HourlyActivityData>>> fetchHourlyActivityData({int days = 14}) async {
+    try {
+      final now = DateTime.now();
+      final startDate = now.subtract(Duration(days: days));
+      final formattedStart = DateFormat('yyyy-MM-dd HH:mm:ss').format(startDate);
+      final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime(now.year, now.month, now.day, 23, 59, 59));
 
-    final response = await http
-        .get(Uri.parse("$baseUrl/get_promedio_hora.php?inicio=$formattedStart&fin=$formattedEnd"))
-        .timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(Uri.parse("$baseUrl/get_incrementos_por_hora_con_fecha.php?inicio=$formattedStart&fin=$formattedEnd"))
+          .timeout(const Duration(seconds: 15));
 
-    if (response.statusCode != 200) {
-      return ChartDataResponse.error("Error al conectar con el servidor: ${response.statusCode}");
-    }
+      if (response.statusCode != 200) {
+        return ChartDataResponse.error("Error al conectar con el servidor: ${response.statusCode}");
+      }
 
-    List<dynamic> jsonData = jsonDecode(response.body);
-    if (jsonData.isEmpty) {
-      return ChartDataResponse.success(<HourlyActivityData>[]);
-    }
+      List<dynamic> jsonData = jsonDecode(response.body);
+      if (jsonData.isEmpty) {
+        return ChartDataResponse.success(<HourlyActivityData>[]);
+      }
 
-    Map<int, Map<int, int>> actividadPorHoraDia = {};
-    for (int dia = 0; dia < 7; dia++) {
-      actividadPorHoraDia[dia] = {for (int h = 0; h < 24; h++) h: 0};
-    }
+      // Estructura para almacenar cantidad por día de la semana y hora
+      Map<int, Map<int, int>> actividadPorHoraDia = {};
+      for (int dia = 0; dia < 7; dia++) {
+        actividadPorHoraDia[dia] = {for (int h = 0; h < 24; h++) h: 0};
+      }
 
-    int maxPromedio = 0;
+      int maxCantidad = 0;
 
-    for (var item in jsonData) {
-      try {
-        final fecha = DateTime.parse(item['fecha']);
-        final diaSemana = (fecha.weekday - 1) % 7;
-        final hora = fecha.hour;
-        final promedio = int.tryParse(item['promedio'].toString()) ?? 0;
+      for (var item in jsonData) {
+        try {
+          final fechaStr = item['fecha'];
+          final fecha = DateTime.parse(fechaStr);
+          final diaSemana = (fecha.weekday - 1) % 7; // Lunes = 0, Domingo = 6
+          final hora = int.tryParse(item['hora'].toString()) ?? 0;
+          final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
 
-        actividadPorHoraDia[diaSemana]![hora] =
-            actividadPorHoraDia[diaSemana]![hora]! + promedio;
+          actividadPorHoraDia[diaSemana]![hora] =
+              actividadPorHoraDia[diaSemana]![hora]! + cantidad;
 
-        if (actividadPorHoraDia[diaSemana]![hora]! > maxPromedio) {
-          maxPromedio = actividadPorHoraDia[diaSemana]![hora]!;
+          if (actividadPorHoraDia[diaSemana]![hora]! > maxCantidad) {
+            maxCantidad = actividadPorHoraDia[diaSemana]![hora]!;
+          }
+        } catch (_) {
+          // Ignorar errores individuales
         }
-      } catch (e) {
-        // Error al procesar item de hora: $e
       }
-    }
 
-    List<HourlyActivityData> datosActividad = [];
-    for (int dia = 0; dia < 7; dia++) {
-      for (int hora = 0; hora < 24; hora++) {
-        final cantidad = actividadPorHoraDia[dia]![hora]!;
-        final intensidad = maxPromedio > 0 ? cantidad / maxPromedio : 0.0;
+      List<HourlyActivityData> datosActividad = [];
+      for (int dia = 0; dia < 7; dia++) {
+        for (int hora = 0; hora < 24; hora++) {
+          final cantidad = actividadPorHoraDia[dia]![hora]!;
+          final intensidad = maxCantidad > 0 ? cantidad / maxCantidad : 0.0;
 
-        datosActividad.add(HourlyActivityData(
-          hora: hora,
-          diaSemana: dia,
-          cantidad: cantidad,
-          intensidad: intensidad,
-        ));
+          datosActividad.add(HourlyActivityData(
+            hora: hora,
+            diaSemana: dia,
+            cantidad: cantidad,
+            intensidad: intensidad,
+          ));
+        }
       }
-    }
 
-    return ChartDataResponse.success(datosActividad);
-  } catch (e) {
-    return ChartDataResponse.error("Error al procesar actividad por hora: $e");
+      return ChartDataResponse.success(datosActividad);
+    } catch (e) {
+      return ChartDataResponse.error("Error al procesar actividad por hora: $e");
+    }
   }
-}
-
 
 
   // 📈 Obtener datos acumulativos semanales
 static Future<ChartDataResponse<List<WeeklyCumulativeData>>> fetchWeeklyCumulativeData({int days = 7}) async {
   try {
     final now = DateTime.now();
+
+    if (days == 1) {
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+      final formattedStart = DateFormat('yyyy-MM-dd HH:mm:ss').format(startOfDay);
+      final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(endOfDay);
+
+      final response = await http.get(
+        Uri.parse("$baseUrl/get_incrementos_totales_por_hora.php?inicio=$formattedStart&fin=$formattedEnd"),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        return ChartDataResponse.error("Error al obtener datos por hora");
+      }
+
+      List<dynamic> jsonData = jsonDecode(response.body);
+      Map<int, int> datosPorHora = {};
+
+      for (var item in jsonData) {
+        final hora = int.tryParse(item['hora'].toString()) ?? 0;
+        final total = int.tryParse(item['total'].toString()) ?? 0;
+        datosPorHora[hora] = total;
+      }
+
+      // Llenar 24 horas acumulando
+      List<WeeklyCumulativeData> datos = [];
+      int acumulado = 0;
+
+      for (int h = 0; h < 24; h++) {
+        final cantidad = datosPorHora[h] ?? 0;
+        acumulado += cantidad;
+
+        datos.add(WeeklyCumulativeData(
+          fecha: now,
+          cantidadDiaria: cantidad,
+          cantidadAcumulada: acumulado,
+          fechaFormateada: "${h.toString().padLeft(2, '0')}:00",
+        ));
+      }
+
+      return ChartDataResponse.success(datos);
+    }
+
+    // Para más de un día
     final startDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: days - 1));
     final formattedStart = DateFormat('yyyy-MM-dd').format(startDate);
-    final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime(now.year, now.month, now.day, 23, 59, 59));
+    final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(
+      DateTime(now.year, now.month, now.day, 23, 59, 59),
+    );
 
-    final response = await http
-        .get(Uri.parse("$baseUrl/get_promedio_diario.php?inicio=$formattedStart&fin=$formattedEnd"))
-        .timeout(const Duration(seconds: 15));
+    final response = await http.get(
+      Uri.parse("$baseUrl/get_incrementos_por_dia.php?inicio=$formattedStart&fin=$formattedEnd"),
+    ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
-      return ChartDataResponse.error("Error al conectar con el servidor: ${response.statusCode}");
+      return ChartDataResponse.error("Error al obtener datos por día");
     }
 
     List<dynamic> jsonData = jsonDecode(response.body);
 
-    Map<String, int> promedioPorFecha = {
-      for (var item in jsonData)
-        item['fecha']: int.tryParse(item['promedio'].toString()) ?? 0,
-    };
+    // Agrupar por fecha y sumar los incrementos de todos los tipos
+    Map<String, int> totalPorFecha = {};
+    for (var item in jsonData) {
+      final fecha = item['fecha'];
+      final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
 
-    List<WeeklyCumulativeData> datosAcumulativos = [];
+      totalPorFecha[fecha] = (totalPorFecha[fecha] ?? 0) + cantidad;
+    }
+
+    List<WeeklyCumulativeData> datos = [];
     int acumulado = 0;
 
     for (int i = 0; i < days; i++) {
       final fecha = startDate.add(Duration(days: i));
       final fechaKey = DateFormat('yyyy-MM-dd').format(fecha);
-      final promedioDiario = promedioPorFecha[fechaKey] ?? 0;
-      acumulado += promedioDiario;
+      final cantidad = totalPorFecha[fechaKey] ?? 0;
+      acumulado += cantidad;
 
-      datosAcumulativos.add(WeeklyCumulativeData(
+      datos.add(WeeklyCumulativeData(
         fecha: fecha,
-        cantidadDiaria: promedioDiario,
+        cantidadDiaria: cantidad,
         cantidadAcumulada: acumulado,
         fechaFormateada: DateFormat('dd/MM').format(fecha),
       ));
     }
 
-    return ChartDataResponse.success(datosAcumulativos);
+    return ChartDataResponse.success(datos);
   } catch (e) {
     return ChartDataResponse.error("Error al procesar datos acumulativos: $e");
   }
 }
+
 
 
   // ⏱️ Calcular tiempo promedio entre detecciones

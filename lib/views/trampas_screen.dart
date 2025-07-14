@@ -191,8 +191,12 @@ class _TrampasScreenState extends State<TrampasScreen> {
           DataCell(Text(trampa['trampa_id'].toString())),
           DataCell(Text(trampa['nombre'] ?? '')),
           DataCell(Text(trampa['ubicacion'] ?? '')),
-          DataCell(Icon(trampa['trampa_adhesiva'] == 1 ? Icons.check : Icons.close,
-              color: trampa['trampa_adhesiva'] == 1 ? Colors.green : Colors.red)),
+            DataCell(
+            Icon(
+              int.parse(trampa['trampa_adhesiva'].toString()) == 1 ? Icons.check : Icons.close,
+              color: int.parse(trampa['trampa_adhesiva'].toString()) == 1 ? Colors.green : Colors.red,
+            )
+          ),
           DataCell(Text(estadoEnEspanol(trampa['status']))),
           DataCell(Text(trampa['timestamp'].toString())),
           DataCell(Row(

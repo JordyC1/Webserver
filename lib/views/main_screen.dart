@@ -6,7 +6,6 @@ import '../theme/app_theme.dart';
 import 'dashboard_screen.dart';
 import 'ver_lecturas.dart';
 import 'usuarios_screen.dart';
-import 'alertas_screen.dart';
 import 'mantenimiento_screen.dart';
 import 'historial_alertas_screen.dart';
 import 'exportar_screen.dart';
@@ -38,7 +37,7 @@ class _MainScreenState extends State<MainScreen> {
     AuditoriaScreen(),               // 4
     VerCapturasScreen(),             // 5
     MantenimientoScreen(),           // 6
-    IndicatorSettingsScreen(),       // 7
+    //IndicatorSettingsScreen(),       // 7
     PanelPlagasScreen(),             // 8
   ];
 

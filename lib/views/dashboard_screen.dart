@@ -133,25 +133,37 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   // 👇 Nuevo: obtener la cantidad de alertas activas desde el servicio
-  Future<void> fetchAlertCount() async {
-    try {
-      final response = await http.get(Uri.parse('http://raspberrypi2.local/get_alertas_historial.php'));
+Future<void> fetchAlertCount() async {
+  try {
+    final response = await http.get(Uri.parse('http://raspberrypi2.local/get_alertas_historial.php'));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      final body = response.body;
 
-        int total = (data['alta'] ?? 0) + (data['media'] ?? 0) + (data['baja'] ?? 0);
+      final List<dynamic> data = jsonDecode(body);
 
-        setState(() {
-          alertasActivas = total;
-        });
-      } else {
-        print("Error HTTP al obtener alertas: ${response.statusCode}");
+      int total = 0;
+
+      for (var alerta in data) {
+        final estado = alerta['estado']?.toString().toLowerCase();
+
+        if (estado == 'activa') {
+          total++;
+        }
       }
-    } catch (e) {
-      print("Error al obtener alertas: $e");
+
+
+      setState(() {
+        alertasActivas = total;
+      });
+    } else {
+      print("Error HTTP al obtener alertas: ${response.statusCode}");
     }
+  } catch (e) {
+    print("Error al obtener alertas: $e");
   }
+}
+
 
   // La función de carga de indicadores de insectos se movió al Panel de Plagas
 
@@ -462,11 +474,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                             title: Text(deteccion["tipo"],
                                 style: TextStyle(
                                     color: AppTheme.textPrimary, fontSize: 14)),
-                            subtitle: Text(
-                                "Cantidad: ${deteccion["cantidad"]} | Fecha: ${deteccion["fecha"]}",
-                                style: TextStyle(
-                                    color: AppTheme.textSecondary,
-                                    fontSize: 12)),
+                              subtitle: Text(
+                                "Cantidad: ${deteccion["cantidad"]} | Fecha: ${deteccion["fecha"]} | Trampa ID: ${deteccion["trampa_id"]}",
+                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                              ),
                           );
                         },
                       ),

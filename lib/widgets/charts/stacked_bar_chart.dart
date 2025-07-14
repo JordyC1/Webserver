@@ -146,15 +146,29 @@ class _StackedBarChartState extends State<StackedBarChart>
   }
 
   Widget _buildChart() {
-    if (chartData == null || chartData!.isEmpty) {
+    final bool sinDetecciones = chartData == null ||
+        chartData!.isEmpty ||
+        chartData!.every((data) => data.totalDia == 0);
+
+    if (sinDetecciones) {
       return const Center(
-        child: Text(
-          'No hay datos disponibles',
-          style: TextStyle(color: AppTheme.textSecondary),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.not_interested, size: 48, color: Colors.grey),
+            SizedBox(height: 12),
+            Text(
+              'Sin detecciones',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            Text(
+              'No se registraron insectos en los últimos días',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ],
         ),
       );
     }
-
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
@@ -221,15 +235,24 @@ class _StackedBarChartState extends State<StackedBarChart>
       bottomTitles: AxisTitles(
         sideTitles: SideTitles(
           showTitles: true,
-          reservedSize: 25,
+          reservedSize: 32,
+          interval: widget.days == 1 ? 2 : null, // Mostrar cada 2 horas si es hoy
           getTitlesWidget: (value, meta) {
             final index = value.toInt();
             if (index >= 0 && index < chartData!.length) {
-              return Text(
-                chartData![index].fechaFormateada,
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 10,
+              final etiqueta = chartData![index].fechaFormateada;
+
+              return SideTitleWidget(
+                axisSide: meta.axisSide,
+                child: Transform.rotate(
+                  angle: -0.5, // -30 grados
+                  child: Text(
+                    etiqueta,
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 10,
+                    ),
+                  ),
                 ),
               );
             }
@@ -241,6 +264,7 @@ class _StackedBarChartState extends State<StackedBarChart>
       rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
     );
   }
+
 
   FlBorderData _buildBorderData() {
     return FlBorderData(

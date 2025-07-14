@@ -13,7 +13,7 @@ class _PlagaAlertsScreenState extends State<PlagaAlertsScreen> {
   bool isLoading = true;
 
   final tiposInsecto = ['Hormiga', 'Cucaracha', 'Polilla', 'Mosca', 'Lasioderma', 'Todos'];
-  final tiposAlerta = ['Deteccion individual', 'Aumento sostenido', 'Presencia crítica'];
+  final tiposAlerta = ['Umbral por intervalo', 'Aumento sostenido', 'Presencia crítica', 'Detección inmediata', 'Presencia persistente'];
 
   String? filtroTipoInsecto;
   String? filtroTipoAlerta;
@@ -88,6 +88,7 @@ class _PlagaAlertsScreenState extends State<PlagaAlertsScreen> {
     final intervalo = alerta['intervalo_minutos'];
     final descripcion = alerta['descripcion'] ?? '';
     final umbral = alerta['umbral_promedio'];
+    final notas = alerta['notas'] ?? '';
 
     showDialog(
       context: context,
@@ -100,21 +101,25 @@ class _PlagaAlertsScreenState extends State<PlagaAlertsScreen> {
             Text("Tipo de alerta: $tipo"),
             SizedBox(height: 8),
             Text("Insecto: $tipoInsecto"),
-            if (tipo == "Aumento sostenido") ...[
+            if (tipo == "Aumento sostenido" || tipo == "Presencia persistente") ...[
               SizedBox(height: 8),
               Text("Intervalo (días): $intervalo"),
-              SizedBox(height: 8),
-              Text("Descripción: $descripcion"),
             ],
-            if (tipo == "Deteccion individual") ...[
-              SizedBox(height: 8),
-              Text("Umbral promedio: $umbral"),
+            if (tipo == "Umbral por intervalo") ...[
               SizedBox(height: 8),
               Text("Intervalo (minutos): $intervalo"),
             ],
-            if (tipo == "Presencia crítica") ...[
+            if (tipo == "Umbral por intervalo" || tipo == "Aumento sostenido" || tipo == "Detección inmediata") ...[
+              SizedBox(height: 8),
+              Text("Umbral promedio: $umbral"),
+            ],
+            if (descripcion.isNotEmpty) ...[
               SizedBox(height: 8),
               Text("Descripción: $descripcion"),
+            ],
+            if (notas.isNotEmpty) ...[
+              SizedBox(height: 8),
+              Text("Notas: $notas"),
             ],
           ],
         ),
@@ -125,32 +130,28 @@ class _PlagaAlertsScreenState extends State<PlagaAlertsScreen> {
     );
   }
 
-  bool esConfiguracionDuplicada(String tipo, String insecto, int intervalo, int umbral) {
-    for (var alerta in alertas) {
-      if (alerta['tipo_alerta'] != tipo) continue;
-
-      if (tipo == 'Presencia crítica') {
-        if (alerta['tipo_insecto'] == insecto) return true;
-      } else if (tipo == 'Aumento sostenido') {
-        if (alerta['tipo_insecto'] == insecto &&
-            alerta['intervalo_minutos'].toString() == intervalo.toString()) {
-          return true;
-        }
-      } else if (tipo == 'Deteccion individual') {
-        if (alerta['tipo_insecto'] == insecto &&
-            alerta['intervalo_minutos'].toString() == intervalo.toString() &&
-            alerta['umbral_promedio'].toString() == umbral.toString()) {
-          return true;
-        }
-      }
+  String _descripcionPorTipo(String tipo) {
+    switch (tipo) {
+      case 'Umbral por intervalo':
+        return 'Genera una alerta cuando el promedio de insectos detectados en un intervalo de tiempo específico (por ejemplo, los últimos 30 minutos) supera un umbral definido.';
+      case 'Aumento sostenido':
+        return 'Genera una alerta cuando la cantidad de insectos de un tipo específico aumenta día tras día durante un número determinado de días consecutivos, y cada aumento supera un umbral mínimo definido.';
+      case 'Presencia crítica':
+        return 'Dispara una alerta cuando se detecta un tipo específico de insecto con una cantidad críticamente alta en una sola captura.';
+      case 'Detección inmediata':
+        return 'Activa una alerta si una captura (individual) supera un umbral determinado de insectos, ya sea para un tipo específico o en total, sin importar el tiempo.';
+      case 'Presencia persistente':
+        return 'Dispara una alerta cuando un insecto ha sido detectado al menos una vez cada día durante N días consecutivos, independientemente de la cantidad.';
+      default:
+        return '';
     }
-    return false;
   }
 
   Future<void> agregarOEditarAlerta() async {
     String? tipoInsecto;
     String? tipoAlerta;
     String estado = 'activo';
+    String notas = '';
     String descripcion = '';
     int umbral = 0;
     int intervalo = 1;
@@ -180,24 +181,35 @@ class _PlagaAlertsScreenState extends State<PlagaAlertsScreen> {
                           .toList(),
                       onChanged: (val) => setModalState(() => tipoInsecto = val),
                     ),
-                  if (tipoAlerta == 'Deteccion individual')
+                  if (tipoAlerta == 'Umbral por intervalo' || tipoAlerta == 'Detección inmediata' || tipoAlerta == 'Aumento sostenido')
                     TextFormField(
                       decoration: InputDecoration(labelText: 'Umbral promedio'),
                       keyboardType: TextInputType.number,
                       onChanged: (val) => umbral = int.tryParse(val) ?? 0,
                     ),
-                  if (tipoAlerta == 'Deteccion individual' || tipoAlerta == 'Aumento sostenido')
+                  if (tipoAlerta == 'Umbral por intervalo' || tipoAlerta == 'Aumento sostenido' || tipoAlerta == 'Presencia persistente')
                     TextFormField(
                       decoration: InputDecoration(
-                        labelText: tipoAlerta == 'Aumento sostenido' ? 'Intervalo (días)' : 'Intervalo (minutos)',
+                        labelText: tipoAlerta == 'Presencia persistente' ? 'Cantidad de días' : (tipoAlerta == 'Aumento sostenido' ? 'Intervalo (días)' : 'Intervalo (minutos)'),
                       ),
                       keyboardType: TextInputType.number,
                       onChanged: (val) => intervalo = int.tryParse(val) ?? 1,
                     ),
-                  TextFormField(
-                    decoration: InputDecoration(labelText: 'Descripción'),
-                    onChanged: (val) => descripcion = val,
-                  ),
+                  if (tipoAlerta != null) ...[
+                    TextFormField(
+                      decoration: InputDecoration(labelText: 'Notas'),
+                      maxLines: 2,
+                      onChanged: (val) => notas = val,
+                    ),
+                    SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _descripcionPorTipo(tipoAlerta!),
+                        style: TextStyle(color: Colors.black87),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -212,17 +224,17 @@ class _PlagaAlertsScreenState extends State<PlagaAlertsScreen> {
                     return;
                   }
 
-                  if ((tipoAlerta == 'Deteccion individual' || tipoAlerta == 'Aumento sostenido') &&
-                      (intervalo <= 0 || (tipoAlerta == 'Deteccion individual' && umbral <= 0))) {
+                  if ((tipoAlerta == 'Umbral por intervalo' || tipoAlerta == 'Aumento sostenido' || tipoAlerta == 'Detección inmediata') &&
+                      (umbral <= 0 || (tipoAlerta != 'Detección inmediata' && intervalo <= 0))) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Umbral e intervalo deben ser mayores a 0')),
                     );
                     return;
                   }
 
-                  if (esConfiguracionDuplicada(tipoAlerta!, tipoInsecto!, intervalo, umbral)) {
+                  if (tipoAlerta == 'Presencia persistente' && intervalo < 2) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Ya existe una configuración similar')),
+                      SnackBar(content: Text('La cantidad de días debe ser al menos 2')),
                     );
                     return;
                   }
@@ -231,10 +243,11 @@ class _PlagaAlertsScreenState extends State<PlagaAlertsScreen> {
                     'tipo_insecto': tipoInsecto,
                     'tipo_alerta': tipoAlerta ?? '',
                     'umbral_promedio': (tipoAlerta == 'Presencia crítica') ? '0' : umbral.toString(),
-                    'intervalo_minutos': (tipoAlerta == 'Presencia crítica') ? '0' : intervalo.toString(),
+                    'intervalo_minutos': (tipoAlerta == 'Presencia crítica' || tipoAlerta == 'Detección inmediata') ? '0' : intervalo.toString(),
                     'aplicar_por_trampa': '1',
                     'estado': estado,
-                    'descripcion': descripcion
+                    'descripcion': _descripcionPorTipo(tipoAlerta ?? ''),
+                    'notas': notas,
                   };
 
                   final response = await http.post(

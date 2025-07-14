@@ -112,11 +112,27 @@ class _WeeklyCumulativeAreaChartState extends State<WeeklyCumulativeAreaChart>
   }
 
   Widget _buildChart() {
-    if (chartData == null || chartData!.isEmpty) {
+    final bool sinDetecciones = chartData == null ||
+        chartData!.isEmpty ||
+        chartData!.every((data) =>
+            data.cantidadAcumulada == 0 && data.cantidadDiaria == 0);
+
+    if (sinDetecciones) {
       return const Center(
-        child: Text(
-          'No hay datos disponibles',
-          style: TextStyle(color: AppTheme.textSecondary),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.not_interested, size: 48, color: Colors.grey),
+            SizedBox(height: 12),
+            Text(
+              'Sin detecciones',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            Text(
+              'No se registraron insectos en el período seleccionado',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ],
         ),
       );
     }
@@ -143,6 +159,7 @@ class _WeeklyCumulativeAreaChartState extends State<WeeklyCumulativeAreaChart>
       },
     );
   }
+
 
   FlGridData _buildGridData() {
     return FlGridData(
