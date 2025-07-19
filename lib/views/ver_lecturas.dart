@@ -65,7 +65,7 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
   Future<void> _fetchLecturas() async {
     Future<void> delay = Future.delayed(const Duration(milliseconds: 500));
     final responseFuture =
-        http.get(Uri.parse("http://raspberrypi2.local/get_lecturas.php"));
+        http.get(Uri.parse("http://raspberrypi2.local/get_historial_incrementos.php"));
     await delay;
     final response = await responseFuture;
 
@@ -86,7 +86,7 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text("Lecturas por Detección", style: TextStyle(color: AppTheme.textPrimary)),
+        title: Text("Lecturas por Incremento", style: TextStyle(color: AppTheme.textPrimary)),
         backgroundColor: AppTheme.cardBackground,
         iconTheme: IconThemeData(color: AppTheme.textPrimary),
         elevation: 0,
@@ -152,7 +152,7 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
 
   Widget _buildSortDropdown() {
     return DropdownButton<String>(
-      hint: Text("Ordenar", style: TextStyle(color: AppTheme.textSecondary)),
+      hint: Text("Ordenar por", style: TextStyle(color: AppTheme.textSecondary)),
       value: _selectedSort,
       dropdownColor: AppTheme.cardBackground,
       style: TextStyle(color: AppTheme.textPrimary),
@@ -164,8 +164,6 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
         });
       },
       items: [
-        "ID Ascendente",
-        "ID Descendente",
         "Cantidad Ascendente",
         "Cantidad Descendente"
       ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
@@ -205,19 +203,24 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
               child: DataTable(
                 columnSpacing: 20,
                 columns: const [
-                  DataColumn(label: Text("ID Detección")),
-                  DataColumn(label: Text("ID Captura")),
+                  DataColumn(label: Text("ID Trampa")),
                   DataColumn(label: Text("Tipo de Insecto")),
-                  DataColumn(label: Text("Cantidad")),
+                  DataColumn(label: Text("Incremento")),
                   DataColumn(label: Text("Fecha")),
+                  DataColumn(label: Text("Mostrar Captura")),
                 ],
                 rows: paginatedLecturas.map((lectura) {
                   return DataRow(cells: [
-                    DataCell(Text(lectura["id"].toString(), overflow: TextOverflow.ellipsis)),
-                    DataCell(Text(lectura["captura_id"].toString(), overflow: TextOverflow.ellipsis)),
-                    DataCell(Text(lectura["tipo"], overflow: TextOverflow.ellipsis)),
-                    DataCell(Text(lectura["cantidad"].toString(), overflow: TextOverflow.ellipsis)),
-                    DataCell(Text(lectura["fecha"], overflow: TextOverflow.ellipsis)),
+                    DataCell(Text(lectura["trampa_id"].toString())),
+                    DataCell(Text(lectura["tipo"])),
+                    DataCell(Text(lectura["incremento"].toString())),
+                    DataCell(Text(lectura["fecha"].toString())),
+                    DataCell(IconButton(
+                      icon: Icon(Icons.image_search, color: AppTheme.primaryBlue),
+                      onPressed: () {
+                        _mostrarCaptura(lectura["fecha"]);
+                      },
+                    )),
                   ]);
                 }).toList(),
               ),
@@ -226,6 +229,58 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
         );
       },
     );
+  }
+
+  void _mostrarCaptura(String fecha) async {
+    final response = await http.get(Uri.parse("http://raspberrypi2.local/mostrar_imagen_por_fecha.php?fecha=$fecha"));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      if (data["status"] == "found") {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text("Captura relacionada"),
+            content: Image.network(data["url"]),
+            actions: [
+              TextButton(
+                child: const Text("Cerrar"),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text("Sin imagen"),
+            content: const Text("No se encontró imagen relacionada a esa fecha."),
+            actions: [
+              TextButton(
+                child: const Text("Cerrar"),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      }
+    } else {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("Error"),
+          content: const Text("No se pudo obtener la imagen desde el servidor."),
+          actions: [
+            TextButton(
+              child: const Text("Cerrar"),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Widget _buildPaginationControls() {
@@ -312,14 +367,10 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
       }
 
       if (_selectedSort != null) {
-        if (_selectedSort == "ID Ascendente") {
-          filteredLecturas.sort((a, b) => a["id"].compareTo(b["id"]));
-        } else if (_selectedSort == "ID Descendente") {
-          filteredLecturas.sort((a, b) => b["id"].compareTo(a["id"]));
-        } else if (_selectedSort == "Cantidad Ascendente") {
-          filteredLecturas.sort((a, b) => a["cantidad"].compareTo(b["cantidad"]));
+        if (_selectedSort == "Cantidad Ascendente") {
+          filteredLecturas.sort((a, b) => a["incremento"].compareTo(b["incremento"]));
         } else if (_selectedSort == "Cantidad Descendente") {
-          filteredLecturas.sort((a, b) => b["cantidad"].compareTo(a["cantidad"]));
+          filteredLecturas.sort((a, b) => b["incremento"].compareTo(a["incremento"]));
         }
       }
 

@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import '../models/chart_models.dart';
 import 'indicator_cache_service.dart';
-import 'notification_service.dart';
 
 class ChartDataService {
   static const String baseUrl = "http://raspberrypi2.local";
@@ -92,6 +91,14 @@ class ChartDataService {
 }
 
 
+static Future<void> actualizarUmbral(String tipo, String periodo, int umbral) async {
+  final url = Uri.parse('$baseUrl/update_umbral.php');
+  await http.post(url, body: {
+    'tipo': tipo,
+    'periodo': periodo,
+    'umbral': umbral.toString(),
+  });
+}
 
 
   // 🥧 Obtener distribución por tipo de insecto
@@ -670,145 +677,163 @@ static Future<ChartDataResponse<List<WeeklyCumulativeData>>> fetchWeeklyCumulati
   // 📊 FASE 2: Nuevos métodos para indicadores de insectos
   
   // 🎯 Obtener resumen completo de indicadores para el dashboard (con cache y notificaciones)
-  static Future<ChartDataResponse<InsectDashboardSummary>> fetchInsectIndicators({
-    int daysForComparison = 1,
-    bool useCache = true,
-  }) async {
-    try {
-      // 🚀 FASE 6: Verificar cache primero
-      if (useCache) {
-        final cachedData = await IndicatorCacheService.getCachedIndicators();
-        if (cachedData != null) {
-          // Verificar notificaciones con datos del cache
-          await NotificationService.checkAndNotifyAlerts(cachedData);
-          return ChartDataResponse.success(cachedData);
-        }
-      }
-      
-      // Obtener todas las lecturas y filtrar localmente
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      
-      // Calcular el período según daysForComparison
-      DateTime startDate;
-      DateTime endDate = today.add(const Duration(days: 1)); // Hasta mañana
-      
-      if (daysForComparison == 1) {
-        // Solo hoy
-        startDate = today;
-      } else {
-        // Últimos N días
-        startDate = today.subtract(Duration(days: daysForComparison - 1));
-      }
-      
-      // Obtener todas las lecturas de una sola vez
-      final allLecturasResponse = await http
-          .get(Uri.parse("$baseUrl/get_lecturas.php"))
-          .timeout(const Duration(seconds: 15));
-          
-      // Obtener umbrales de configuración
-      final thresholdsResponse = await fetchInsectThresholds();
-      if (!thresholdsResponse.success) {
-        return ChartDataResponse.error("Error al obtener umbrales: ${thresholdsResponse.errorMessage}");
-      }
-      
-      // Obtener alertas activas
-      final alertsResponse = await fetchAlertsBySeverity();
-      int totalAlertas = 0;
-      if (alertsResponse.success) {
-        totalAlertas = alertsResponse.data!.fold(0, (sum, alert) => sum + alert.cantidad);
-      }
-      
-      if (allLecturasResponse.statusCode != 200) {
-        return ChartDataResponse.error("Error al conectar con el servidor: ${allLecturasResponse.statusCode}");
-      }
-      
-      // Procesar todas las lecturas y filtrar localmente
-      final allLecturas = List<Map<String, dynamic>>.from(jsonDecode(allLecturasResponse.body));
-      
-      // Calcular período anterior para comparación
-      final previousStartDate = startDate.subtract(Duration(days: daysForComparison));
-      final previousEndDate = startDate;
-      
-      // Agrupar por tipo con filtrado local
-      Map<String, int> currentPeriodCounts = {};
-      Map<String, int> previousPeriodCounts = {};
-      
-      for (var lectura in allLecturas) {
-        try {
-          final fecha = DateTime.parse(lectura['fecha']);
-          final tipo = lectura['tipo'].toString();
-          final cantidad = int.tryParse(lectura['cantidad'].toString()) ?? 0;
-          
-          // Filtrar lecturas del período actual
-          if (fecha.isAfter(startDate.subtract(const Duration(milliseconds: 1))) && 
-              fecha.isBefore(endDate)) {
-            currentPeriodCounts[tipo] = (currentPeriodCounts[tipo] ?? 0) + cantidad;
-          }
-          
-          // Filtrar lecturas del período anterior
-          if (fecha.isAfter(previousStartDate.subtract(const Duration(milliseconds: 1))) && 
-              fecha.isBefore(previousEndDate)) {
-            previousPeriodCounts[tipo] = (previousPeriodCounts[tipo] ?? 0) + cantidad;
-          }
-        } catch (e) {
-          // Error al procesar lectura: $e
-        }
-      }
-      
-      // Crear indicadores
-      final thresholds = thresholdsResponse.data!;
-      final allTypes = {...currentPeriodCounts.keys, ...previousPeriodCounts.keys};
-      
-      List<InsectIndicatorData> indicadores = [];
-      final colors = [
-        const Color(0xFF2196F3), // blue
-        const Color(0xFFF44336), // red
-        const Color(0xFF4CAF50), // green
-        const Color(0xFFFF9800), // orange
-        const Color(0xFF9C27B0), // purple
-        const Color(0xFF009688), // teal
-        const Color(0xFFFFEB3B), // yellow
-      ];
-      
-      int colorIndex = 0;
-      for (String tipo in allTypes) {
-        final cantidadActual = currentPeriodCounts[tipo] ?? 0;
-        final cantidadAnterior = previousPeriodCounts[tipo] ?? 0;
-        final umbral = thresholds[tipo] ?? 50; // umbral por defecto
+static Future<ChartDataResponse<InsectDashboardSummary>> fetchInsectIndicators({
+  int daysForComparison = 1,
+  bool useCache = true,
+}) async {
+  try {
+    if (useCache) {
+      final cachedData = await IndicatorCacheService.getCachedIndicators();
+      if (cachedData != null) {
         
-        indicadores.add(InsectIndicatorData.fromBasicData(
-          tipo: tipo,
-          cantidadHoy: cantidadActual,
-          cantidadAyer: cantidadAnterior,
-          color: colors[colorIndex % colors.length],
-          umbral: umbral,
-          tieneAlerta: cantidadActual >= umbral,
-        ));
-        
-        colorIndex++;
+        return ChartDataResponse.success(cachedData);
       }
-      
-      // Crear resumen
-      final summary = InsectDashboardSummary.fromData(
-        indicadores: indicadores,
-        totalAlertas: totalAlertas,
-      );
-      
-      // 🚀 FASE 6: Cachear los nuevos datos
-      if (useCache) {
-        await IndicatorCacheService.cacheIndicators(summary);
-      }
-      
-      // 🚀 FASE 6: Verificar y enviar notificaciones para alertas críticas
-      await NotificationService.checkAndNotifyAlerts(summary);
-      
-      return ChartDataResponse.success(summary);
-      
-    } catch (e) {
-      return ChartDataResponse.error("Error al procesar indicadores: $e");
     }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    DateTime startDate;
+    DateTime endDate = today.add(const Duration(days: 1));
+
+    if (daysForComparison == 1) {
+      startDate = today;
+    } else {
+      startDate = today.subtract(Duration(days: daysForComparison - 1));
+    }
+
+    final previousStartDate = startDate.subtract(Duration(days: daysForComparison));
+    final previousEndDate = startDate;
+
+    final formatter = DateFormat('yyyy-MM-dd');
+    final queryStart = formatter.format(previousStartDate);
+    final queryEnd = formatter.format(endDate);
+
+    // 1. Obtener incrementos reales
+    final response = await http.get(Uri.parse(
+      "$baseUrl/get_incrementos_por_dia.php?inicio=$queryStart&fin=$queryEnd",
+    )).timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      return ChartDataResponse.error("Error al conectar con el servidor: ${response.statusCode}");
+    }
+
+    final List<dynamic> data = jsonDecode(response.body);
+
+    // 2. Determinar período para los umbrales
+    String periodo;
+    switch (daysForComparison) {
+      case 1:
+        periodo = 'hoy';
+        break;
+      case 7:
+        periodo = 'semana';
+        break;
+      case 30:
+        periodo = 'mes';
+        break;
+      default:
+        periodo = 'hoy';
+    }
+
+    // 3. Obtener umbrales personalizados para ese período
+    final thresholdResponse = await http.get(Uri.parse(
+      "$baseUrl/get_umbral_por_tipo.php?periodo=$periodo",
+    )).timeout(const Duration(seconds: 10));
+
+    if (thresholdResponse.statusCode != 200) {
+      return ChartDataResponse.error("No se pudo obtener umbrales del servidor.");
+    }
+
+    final thresholdJson = jsonDecode(thresholdResponse.body);
+    if (thresholdJson['success'] != true || thresholdJson['data'] == null) {
+      return ChartDataResponse.error("Respuesta inválida al obtener umbrales.");
+    }
+
+    final Map<String, dynamic> rawThresholds = thresholdJson['data'];
+    final Map<String, int> thresholds = rawThresholds.map((key, value) =>
+        MapEntry(key.toString().toLowerCase(), int.tryParse(value.toString()) ?? 50));
+
+    // 4. Obtener alertas activas
+    final alertsResponse = await fetchAlertsBySeverity();
+    int totalAlertas = 0;
+    if (alertsResponse.success) {
+      totalAlertas = alertsResponse.data!.fold(0, (sum, alert) => sum + alert.cantidad);
+    }
+
+    // 5. Agrupar los datos por tipo y período
+    final Map<String, int> currentPeriodCounts = {};
+    final Map<String, int> previousPeriodCounts = {};
+
+    for (final item in data) {
+      try {
+        final fecha = DateTime.parse(item['fecha']);
+        final tipoOriginal = item['tipo'].toString();
+        final tipo = tipoOriginal.toLowerCase();
+        final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
+
+        if (fecha.isAfter(startDate.subtract(const Duration(milliseconds: 1))) &&
+            fecha.isBefore(endDate)) {
+          currentPeriodCounts[tipo] = (currentPeriodCounts[tipo] ?? 0) + cantidad;
+        }
+
+        if (fecha.isAfter(previousStartDate.subtract(const Duration(milliseconds: 1))) &&
+            fecha.isBefore(previousEndDate)) {
+          previousPeriodCounts[tipo] = (previousPeriodCounts[tipo] ?? 0) + cantidad;
+        }
+      } catch (_) {}
+    }
+
+    // 6. Construir indicadores
+    final allTypes = {...currentPeriodCounts.keys, ...previousPeriodCounts.keys};
+
+    List<InsectIndicatorData> indicadores = [];
+    final colors = [
+      const Color(0xFF2196F3),
+      const Color(0xFFF44336),
+      const Color(0xFF4CAF50),
+      const Color(0xFFFF9800),
+      const Color(0xFF9C27B0),
+      const Color(0xFF009688),
+      const Color(0xFFFFEB3B),
+    ];
+
+    int colorIndex = 0;
+    for (String tipo in allTypes) {
+      final cantidadActual = currentPeriodCounts[tipo] ?? 0;
+      final cantidadAnterior = previousPeriodCounts[tipo] ?? 0;
+      final umbral = thresholds[tipo] ?? 50;
+
+      indicadores.add(InsectIndicatorData.fromBasicData(
+        tipo: tipo[0].toUpperCase() + tipo.substring(1),
+        cantidadHoy: cantidadActual,
+        cantidadAyer: cantidadAnterior,
+        color: colors[colorIndex % colors.length],
+        umbral: umbral,
+        tieneAlerta: cantidadActual >= umbral,
+      ));
+
+      colorIndex++;
+    }
+
+    final summary = InsectDashboardSummary.fromData(
+      indicadores: indicadores,
+      totalAlertas: totalAlertas,
+    );
+
+    if (useCache) {
+      await IndicatorCacheService.cacheIndicators(summary);
+    }
+    return ChartDataResponse.success(summary);
+
+  } catch (e) {
+    return ChartDataResponse.error("Error al procesar indicadores: $e");
   }
+}
+
+
+
+
   
   // 🐛 Obtener indicadores específicos por tipo de insecto
   static Future<ChartDataResponse<List<InsectIndicatorData>>> fetchInsectTypeIndicators({
@@ -905,115 +930,161 @@ static Future<ChartDataResponse<List<WeeklyCumulativeData>>> fetchWeeklyCumulati
   
   // ⚙️ Obtener umbrales de configuración para alertas
   static Future<ChartDataResponse<Map<String, int>>> fetchInsectThresholds() async {
-    try {
-      // Intentar obtener desde el servidor (si existe endpoint)
-      final response = await http
-          .get(Uri.parse("$baseUrl/get_configuracion_plagas.php"))
-          .timeout(const Duration(seconds: 10));
-          
-      if (response.statusCode == 200) {
-        final data = List<Map<String, dynamic>>.from(jsonDecode(response.body));
-        Map<String, int> thresholds = {};
-        
-        for (var config in data) {
-          final tipo = config['tipo'].toString();
-          final umbral = int.tryParse(config['umbral_alerta'].toString()) ?? 50;
-          thresholds[tipo] = umbral;
-        }
-        
-        return ChartDataResponse.success(thresholds);
+  try {
+    final response = await http
+        .get(Uri.parse("$baseUrl/get_umbral_por_tipo.php"))
+        .timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+
+      if (json['success'] == true && json['data'] is Map) {
+        final umbrales = Map<String, int>.from(json['data']);
+        return ChartDataResponse.success(umbrales);
+      } else {
+        return ChartDataResponse.error("Respuesta inválida del servidor");
       }
-    } catch (e) {
-      // No se pudo obtener configuración del servidor, usando valores por defecto: $e
     }
-    
-    // Valores por defecto si no hay configuración en el servidor
-    const defaultThresholds = {
-      'mosca': 50,
-      'mosquito': 30,
-      'abeja': 20,
-      'avispa': 25,
-      'polilla': 40,
-      'escarabajo': 35,
-      'chinche': 45,
-    };
-    
-    return ChartDataResponse.success(defaultThresholds);
+  } catch (e) {
+    // Manejar error silenciosamente
   }
 
+  // Valores por defecto
+  const defaultThresholds = {
+    'mosca': 50,
+    'mosquito': 30,
+    'abeja': 20,
+    'avispa': 25,
+    'polilla': 40,
+    'escarabajo': 35,
+    'chinche': 45,
+  };
+
+  return ChartDataResponse.success(defaultThresholds);
+}
+
+static Future<List<AlertaPlaga>> fetchAlertasPosiblesPlagas() async {
+  final response = await http.get(
+    Uri.parse('$baseUrl/get_alertas_historial.php'),
+  ).timeout(const Duration(seconds: 15));
+
+  if (response.statusCode == 200) {
+    final List<dynamic> jsonList = jsonDecode(response.body);
+    return jsonList
+        .map((json) => AlertaPlaga.fromJson(json))
+        .where((a) => a.tipo == 'Posible plaga' && a.estado == 'activa')
+        .toList();
+  } else {
+    throw Exception('Error al cargar alertas');
+  }
+}
+
+
   // 📈 Obtener datos de tendencia semanal por tipo de insecto
-  static Future<ChartDataResponse<List<WeeklyTrendPoint>>> fetchWeeklyTrendByType({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) async {
-    try {
-      // Configurar fechas por defecto (últimos 7 días)
-      final now = DateTime.now();
-      final defaultEndDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
-      final defaultStartDate = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
-      
-      final finalStartDate = startDate ?? defaultStartDate;
-      final finalEndDate = endDate ?? defaultEndDate;
-      
-      final formattedStart = DateFormat('yyyy-MM-dd').format(finalStartDate);
-      final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(finalEndDate);
+static Future<ChartDataResponse<List<WeeklyTrendPoint>>> fetchWeeklyTrendByType({
+  DateTime? startDate,
+  DateTime? endDate,
+}) async {
+  try {
+    final now = DateTime.now();
+    final start = startDate ?? now.subtract(const Duration(days: 6));
+    final end = endDate ?? DateTime(now.year, now.month, now.day, 23, 59, 59);
 
-      // Utilizar el endpoint existente get_promedio_tipo_por_dia.php
-       final response = await http
-           .get(Uri.parse("$baseUrl/get_promedio_tipo_por_dia.php?inicio=$formattedStart&fin=$formattedEnd"))
-           .timeout(const Duration(seconds: 15));
- 
-       if (response.statusCode != 200) {
-         return ChartDataResponse.error("Error al conectar con el servidor: ${response.statusCode}");
-       }
+    final isToday = start.year == now.year &&
+                    start.month == now.month &&
+                    start.day == now.day &&
+                    end.year == now.year &&
+                    end.month == now.month &&
+                    end.day == now.day;
 
-      List<dynamic> jsonData = jsonDecode(response.body);
-      if (jsonData.isEmpty) {
-        return ChartDataResponse.success(<WeeklyTrendPoint>[]);
+    if (isToday) {
+      print("✅ Entrando a endpoint por HORA");
+      // --- HOY: endpoint por hora ---
+      final formattedStart = DateFormat('yyyy-MM-dd 00:00:00').format(now);
+      final formattedEnd = DateFormat('yyyy-MM-dd 23:59:59').format(now);
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/get_incrementos_por_hora.php?inicio=$formattedStart&fin=$formattedEnd'),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        return ChartDataResponse.error("Error al obtener datos por hora");
       }
 
-      // Procesar datos y agrupar por fecha
+      final jsonData = jsonDecode(response.body);
+      Map<int, List<WeeklyTrendByTypeData>> datosPorHora = {};
+
+      for (var item in jsonData) {
+        final hora = int.tryParse(item['hora'].toString()) ?? 0;
+        final tipo = item['tipo'].toString();
+        final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
+
+        datosPorHora.putIfAbsent(hora, () => []).add(
+          WeeklyTrendByTypeData(
+            fecha: "${hora.toString().padLeft(2, '0')}:00",
+            tipoInsecto: tipo,
+            cantidad: cantidad,
+            fechaDateTime: DateTime(now.year, now.month, now.day, hora),
+          ),
+        );
+      }
+
+      // Llenar las 24 horas
+      List<WeeklyTrendPoint> puntos = [];
+      for (int h = 0; h < 24; h++) {
+        final datos = datosPorHora[h] ?? [];
+        puntos.add(WeeklyTrendPoint.fromTrendDataList("${h.toString().padLeft(2, '0')}:00", datos));
+      }
+
+      return ChartDataResponse.success(puntos);
+    } else {
+      // --- RANGO DE DÍAS: endpoint por día ---
+      final formattedStart = DateFormat('yyyy-MM-dd').format(start);
+      final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(end);
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/get_incrementos_por_dia.php?inicio=$formattedStart&fin=$formattedEnd'),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        return ChartDataResponse.error("Error al obtener datos por día");
+      }
+
+      final jsonData = jsonDecode(response.body);
       Map<String, List<WeeklyTrendByTypeData>> datosPorFecha = {};
 
       for (var item in jsonData) {
-        try {
-          final fechaKey = item['fecha'];
-          final tipo = item['tipo'].toString();
-          final promedio = int.tryParse(item['promedio'].toString()) ?? 0;
+        final fechaStr = item['fecha'];
+        final tipo = item['tipo'].toString();
+        final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
 
-          final trendData = WeeklyTrendByTypeData(
-             fecha: fechaKey,
-             tipoInsecto: tipo,
-             cantidad: promedio,
-             fechaDateTime: DateTime.parse(fechaKey),
-           );
-
-          datosPorFecha.putIfAbsent(fechaKey, () => []).add(trendData);
-        } catch (e) {
-           // Error al procesar datos de tendencia semanal por tipo: $e
-         }
+        final fechaDT = DateTime.parse(fechaStr);
+        datosPorFecha.putIfAbsent(fechaStr, () => []).add(
+          WeeklyTrendByTypeData(
+            fecha: fechaStr,
+            tipoInsecto: tipo,
+            cantidad: cantidad,
+            fechaDateTime: fechaDT,
+          ),
+        );
       }
 
-      // Crear lista de puntos de tendencia para los últimos 7 días
-      List<WeeklyTrendPoint> puntosSemanales = [];
-      final totalDays = finalEndDate.difference(finalStartDate).inDays + 1;
-      
+      // Generar lista continua de días
+      List<WeeklyTrendPoint> puntos = [];
+      final totalDays = end.difference(start).inDays + 1;
       for (int i = 0; i < totalDays; i++) {
-        final fecha = finalStartDate.add(Duration(days: i));
+        final fecha = start.add(Duration(days: i));
         final fechaKey = DateFormat('yyyy-MM-dd').format(fecha);
-        final datosDelDia = datosPorFecha[fechaKey] ?? [];
-
-        puntosSemanales.add(WeeklyTrendPoint.fromTrendDataList(
-           fechaKey,
-           datosDelDia,
-         ));
+        final datos = datosPorFecha[fechaKey] ?? [];
+        puntos.add(WeeklyTrendPoint.fromTrendDataList(fechaKey, datos));
       }
 
-      return ChartDataResponse.success(puntosSemanales);
-    } catch (e) {
-       return ChartDataResponse.error("Error al procesar datos de tendencia semanal por tipo: $e");
-     }
+      return ChartDataResponse.success(puntos);
+    }
+  } catch (e) {
+    return ChartDataResponse.error("Error al procesar datos: $e");
   }
+}
 
   // 🔄 Método para obtener todos los datos de una vez (opcional, para optimización)
   static Future<Map<String, dynamic>> fetchAllChartData() async {

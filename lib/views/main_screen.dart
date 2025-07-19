@@ -11,7 +11,7 @@ import 'historial_alertas_screen.dart';
 import 'exportar_screen.dart';
 import 'auditoriascreen.dart';
 import 'ver_capturas.dart';
-import 'indicator_settings_screen.dart';
+//import 'panelplagasscreen.dart';
 import 'panel_plagas_screen.dart';
 
 class MainScreen extends StatefulWidget {

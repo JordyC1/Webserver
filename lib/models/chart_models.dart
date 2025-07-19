@@ -209,9 +209,9 @@ class InsectIndicatorData {
   Color get colorTendencia {
     switch (tendencia) {
       case 'up':
-        return const Color(0xFF4CAF50); // Verde
+        return const Color(0xFFF44336); // Verde
       case 'down':
-        return const Color(0xFFF44336); // Rojo
+        return const Color(0xFF4CAF50); // Rojo
       case 'stable':
       default:
         return const Color(0xFF9E9E9E); // Gris
@@ -655,6 +655,34 @@ class WeeklyTrendByTypeData {
   }
 }
 
+class AlertaPlaga {
+  final int id;
+  final String tipo;
+  final String mensaje;
+  final String severidad;
+  final String estado;
+  final DateTime fecha; 
+
+  AlertaPlaga({
+    required this.id,
+    required this.tipo,
+    required this.mensaje,
+    required this.severidad,
+    required this.estado,
+    required this.fecha,
+  });
+
+  factory AlertaPlaga.fromJson(Map<String, dynamic> json) {
+    return AlertaPlaga(
+      id: int.parse(json['id'].toString()),
+      tipo: json['tipo'],
+      mensaje: json['mensaje'],
+      severidad: json['severidad'],
+      estado: json['estado'],
+      fecha: DateTime.parse(json['fecha']), 
+    );
+  }
+}
 // 📈 Modelo para puntos de tendencia semanal agrupados por fecha
 class WeeklyTrendPoint {
   final String fecha;

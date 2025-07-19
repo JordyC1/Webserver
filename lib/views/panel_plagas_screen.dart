@@ -5,6 +5,7 @@ import '../widgets/charts/insects_summary_card.dart';
 import '../widgets/charts/weekly_trend_by_type_chart.dart';
 import '../models/chart_models.dart';
 import '../services/chart_data_service.dart';
+import '../widgets/charts/plaga_alert_card.dart';
 
 class PanelPlagasScreen extends StatefulWidget {
   const PanelPlagasScreen({super.key});
@@ -20,11 +21,124 @@ class _PanelPlagasScreenState extends State<PanelPlagasScreen> {
   bool isLoadingIndicators = true;
   String? indicatorsError;
   TimeFilter selectedFilter = TimeFilter.today;
+  List<AlertaPlaga> alertasPlaga = [];
+  bool isLoadingAlertas = true;
+
+  void _mostrarDialogoModificarUmbral() {
+  String tipoSeleccionado = 'Cucaracha';
+  String periodoSeleccionado = 'hoy';
+  TextEditingController umbralController = TextEditingController();
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Modificar Umbral por Tipo y Período'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Selector de tipo de insecto
+          DropdownButton<String>(
+            value: tipoSeleccionado,
+            isExpanded: true,
+            items: ['Cucaracha', 'Mosca', 'Hormiga', 'Polilla', 'Lasioderma'].map((tipo) {
+              return DropdownMenuItem<String>(
+                value: tipo,
+                child: Text(tipo),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                tipoSeleccionado = value;
+              }
+            },
+          ),
+
+          const SizedBox(height: 12),
+
+          // Selector de período
+          DropdownButton<String>(
+            value: periodoSeleccionado,
+            isExpanded: true,
+            items: ['hoy', 'semana', 'mes'].map((periodo) {
+              return DropdownMenuItem<String>(
+                value: periodo,
+                child: Text(periodo[0].toUpperCase() + periodo.substring(1)),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                periodoSeleccionado = value;
+              }
+            },
+          ),
+
+          const SizedBox(height: 12),
+
+          // Campo de umbral
+          TextField(
+            controller: umbralController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Nuevo umbral',
+              hintText: 'Ej: 10',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            final input = umbralController.text.trim();
+            final nuevo = int.tryParse(input);
+
+            if (nuevo == null || nuevo < 1) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Ingresa un número válido mayor o igual a 1')),
+              );
+              return;
+            }
+
+            // Llama a tu método con tipo + período
+            await ChartDataService.actualizarUmbral(tipoSeleccionado, periodoSeleccionado, nuevo);
+
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Umbral actualizado correctamente')),
+            );
+            _loadInsectIndicators();
+          },
+          child: const Text('Guardar'),
+        ),
+      ],
+    ),
+  );
+}
+
+  Future<void> _loadAlertasPlaga() async {
+    try {
+      final lista = await ChartDataService.fetchAlertasPosiblesPlagas();
+      setState(() {
+        alertasPlaga = lista;
+        isLoadingAlertas = false;
+      });
+    } catch (e) {
+      setState(() {
+        alertasPlaga = [];
+        isLoadingAlertas = false;
+      });
+    }
+  }
+
 
   @override
   void initState() {
     super.initState();
     _loadInsectIndicators();
+    _loadAlertasPlaga();
   }
 
   Future<void> _loadInsectIndicators() async {
@@ -144,21 +258,108 @@ class _PanelPlagasScreenState extends State<PanelPlagasScreen> {
               _buildInsectSummaryCard(),
               const SizedBox(height: 24),
 
+              // Alertas activas de plaga
+            if (isLoadingAlertas)
+            ...[
+              const SizedBox(height: 16),
+              Card(
+                color: AppTheme.cardBackground,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                child: Container(
+                  height: 150,
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ]
+          else if (alertasPlaga.isNotEmpty)
+            ...[
+              const Text(
+                'Alertas de Posibles Plagas',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                color: AppTheme.cardBackground,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: 280),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Scrollbar(
+                    thumbVisibility: true,
+                    thickness: 6,
+                    radius: const Radius.circular(8),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: alertasPlaga.length,
+                      itemBuilder: (context, index) {
+                        final alerta = alertasPlaga[index];
+                        return PlagaAlertCard(
+                          mensaje: alerta.mensaje,
+                          severidad: alerta.severidad,
+                          fecha: alerta.fecha,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ]
+          else
+            ...[
+              const SizedBox(height: 16),
+              Card(
+                color: AppTheme.cardBackground,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  child: const Text(
+                    'No hay alertas de plaga activas por el momento.',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+              
               // Gráfico de tendencia semanal por tipo
               _buildWeeklyTrendChart(),
               const SizedBox(height: 24),
 
               // Grilla de indicadores de insectos
-              Text(
-                'Indicadores por Tipo de Insecto',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
+           Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Indicadores por Tipo de Insecto',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: _mostrarDialogoModificarUmbral,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryBlue,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Editar Umbral',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              _buildInsectIndicatorsGrid(),
+            const SizedBox(height: 16),
+            _buildInsectIndicatorsGrid(),
             ],
           ),
         ),

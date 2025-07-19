@@ -251,7 +251,7 @@ class _VerCapturasScreenState extends State<VerCapturasScreen> {
                     DataCell(Text(_formatearInsectos(captura["insectos"]))),
                     DataCell(
                       IconButton(
-                        icon: Icon(Icons.visibility, color: Colors.blue),
+                        icon: Icon(Icons.image_search, color: Colors.blue),
                         tooltip: "Ver captura",
                         onPressed: () => _mostrarImagenPorId(captura["id"]),
                       ),
