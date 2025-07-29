@@ -683,6 +683,7 @@ class AlertaPlaga {
     );
   }
 }
+
 // 📈 Modelo para puntos de tendencia semanal agrupados por fecha
 class WeeklyTrendPoint {
   final String fecha;

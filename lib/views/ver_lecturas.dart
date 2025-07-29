@@ -86,7 +86,7 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text("Lecturas por Incremento", style: TextStyle(color: AppTheme.textPrimary)),
+        title: Text("Lecturas por Detecciones", style: TextStyle(color: AppTheme.textPrimary)),
         backgroundColor: AppTheme.cardBackground,
         iconTheme: IconThemeData(color: AppTheme.textPrimary),
         elevation: 0,
@@ -188,48 +188,54 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
   }
 
   Widget _buildTable() {
-    List<Map<String, dynamic>> paginatedLecturas = _getPaginatedLecturas();
+  List<Map<String, dynamic>> paginatedLecturas = _getPaginatedLecturas();
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: Card(
-              elevation: 2,
-              color: AppTheme.cardBackground,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              child: DataTable(
-                columnSpacing: 20,
-                columns: const [
-                  DataColumn(label: Text("ID Trampa")),
-                  DataColumn(label: Text("Tipo de Insecto")),
-                  DataColumn(label: Text("Incremento")),
-                  DataColumn(label: Text("Fecha")),
-                  DataColumn(label: Text("Mostrar Captura")),
-                ],
-                rows: paginatedLecturas.map((lectura) {
-                  return DataRow(cells: [
-                    DataCell(Text(lectura["trampa_id"].toString())),
-                    DataCell(Text(lectura["tipo"])),
-                    DataCell(Text(lectura["incremento"].toString())),
-                    DataCell(Text(lectura["fecha"].toString())),
-                    DataCell(IconButton(
-                      icon: Icon(Icons.image_search, color: AppTheme.primaryBlue),
-                      onPressed: () {
-                        _mostrarCaptura(lectura["fecha"]);
-                      },
-                    )),
-                  ]);
-                }).toList(),
-              ),
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+          child: Card(
+            elevation: 2,
+            color: AppTheme.cardBackground,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            child: DataTable(
+              columnSpacing: 20,
+              columns: const [
+                DataColumn(label: Text("ID Trampa")),
+                DataColumn(label: Text("Insectos Detectados")),
+                DataColumn(label: Text("Incremento")),
+                DataColumn(label: Text("Fecha")),
+                DataColumn(label: Text("Mostrar Captura")),
+              ],
+              rows: paginatedLecturas.map((lectura) {
+                // Calcular incremento como suma de cantidades entre paréntesis
+                final regex = RegExp(r'\((\d+)\)');
+                final matches = regex.allMatches(lectura["insectos_detectados"]);
+                int totalIncremento = matches.fold(0, (sum, match) => sum + int.parse(match.group(1)!));
+
+                return DataRow(cells: [
+                  DataCell(Text(lectura["trampa_id"].toString())),
+                  DataCell(Text(lectura["insectos_detectados"])),
+                  DataCell(Text(totalIncremento.toString())),
+                  DataCell(Text(lectura["fecha"].toString())),
+                  DataCell(IconButton(
+                    icon: Icon(Icons.image_search, color: AppTheme.primaryBlue),
+                    onPressed: () {
+                      _mostrarCaptura(lectura["fecha"]);
+                    },
+                  )),
+                ]);
+              }).toList(),
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
+
 
   void _mostrarCaptura(String fecha) async {
     final response = await http.get(Uri.parse("http://raspberrypi2.local/mostrar_imagen_por_fecha.php?fecha=$fecha"));
@@ -332,51 +338,59 @@ class _VerLecturasScreenState extends State<VerLecturasScreen> {
   }
 
   void _applyFilters() {
-    setState(() {
-      var filteredLecturas = List<Map<String, dynamic>>.from(lecturas);
+  List<Map<String, dynamic>> filteredLecturas = List<Map<String, dynamic>>.from(lecturas);
 
-      if (_selectedFilterDate != null && _selectedFilterDate != "Todas") {
-        DateTime now = DateTime.now();
-        DateTime filterDate;
+  // Filtro por fecha
+  if (_selectedFilterDate != null && _selectedFilterDate != "Todas") {
+    DateTime now = DateTime.now();
+    DateTime filterDate;
 
-        if (_selectedFilterDate == "Hoy") {
-          filterDate = DateTime(now.year, now.month, now.day);
-        } else if (_selectedFilterDate == "Última Semana") {
-          filterDate = now.subtract(const Duration(days: 7));
-        } else {
-          filterDate = now.subtract(const Duration(days: 30));
-        }
+    if (_selectedFilterDate == "Hoy") {
+      filterDate = DateTime(now.year, now.month, now.day);
+      filteredLecturas = filteredLecturas.where((lectura) {
+        DateTime fechaLectura = DateTime.parse(lectura["fecha"]);
+        return fechaLectura.year == now.year &&
+               fechaLectura.month == now.month &&
+               fechaLectura.day == now.day;
+      }).toList();
+    } else if (_selectedFilterDate == "Última Semana") {
+      filterDate = now.subtract(Duration(days: 7));
+      filteredLecturas = filteredLecturas.where((lectura) {
+        DateTime fechaLectura = DateTime.parse(lectura["fecha"]);
+        return fechaLectura.isAfter(filterDate);
+      }).toList();
+    } else if (_selectedFilterDate == "Último Mes") {
+      filterDate = now.subtract(Duration(days: 30));
+      filteredLecturas = filteredLecturas.where((lectura) {
+        DateTime fechaLectura = DateTime.parse(lectura["fecha"]);
+        return fechaLectura.isAfter(filterDate);
+      }).toList();
+    }
+  }
 
-        filteredLecturas = filteredLecturas.where((lectura) {
-          try {
-            DateTime lecturaDate = DateTime.parse(lectura["fecha"]);
-            if (_selectedFilterDate == "Hoy") {
-              return lecturaDate.year == now.year &&
-                  lecturaDate.month == now.month &&
-                  lecturaDate.day == now.day;
-            }
-            return lecturaDate.isAfter(filterDate);
-          } catch (_) {
-            return false;
-          }
-        }).toList();
-      }
+  // Filtro por tipo de insecto (ej: "Mosca" dentro de "Mosca (2), Polilla (1)")
+  if (_selectedTipoInsecto != null && _selectedTipoInsecto != "Todas") {
+    filteredLecturas = filteredLecturas.where((lectura) {
+      final String detectados = lectura["insectos_detectados"] ?? "";
+      return detectados.toLowerCase().contains(_selectedTipoInsecto!.toLowerCase());
+    }).toList();
+  }
 
-      if (_selectedTipoInsecto != null && _selectedTipoInsecto != "Todas") {
-        filteredLecturas = filteredLecturas.where((lectura) => lectura["tipo"] == _selectedTipoInsecto).toList();
-      }
-
-      if (_selectedSort != null) {
-        if (_selectedSort == "Cantidad Ascendente") {
-          filteredLecturas.sort((a, b) => a["incremento"].compareTo(b["incremento"]));
-        } else if (_selectedSort == "Cantidad Descendente") {
-          filteredLecturas.sort((a, b) => b["incremento"].compareTo(a["incremento"]));
-        }
-      }
-
-      lecturas = filteredLecturas;
+  // Ordenar por cantidad de insectos detectados (analiza todos los números entre paréntesis)
+  if (_selectedSort != null) {
+    filteredLecturas.sort((a, b) {
+      final regex = RegExp(r'\((\d+)\)');
+      int sumaA = regex.allMatches(a["insectos_detectados"]).fold(0, (sum, m) => sum + int.parse(m.group(1)!));
+      int sumaB = regex.allMatches(b["insectos_detectados"]).fold(0, (sum, m) => sum + int.parse(m.group(1)!));
+      return _selectedSort == "Cantidad Ascendente" ? sumaA.compareTo(sumaB) : sumaB.compareTo(sumaA);
     });
   }
+
+  setState(() {
+    lecturas = filteredLecturas;
+  });
+}
+
 
   List<Map<String, dynamic>> _getPaginatedLecturas() {
     int startIndex = (_currentPage - 1) * _itemsPerPage;

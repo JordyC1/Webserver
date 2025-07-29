@@ -7,6 +7,7 @@ import '../models/chart_models.dart';
 import '../services/chart_data_service.dart';
 import '../widgets/charts/plaga_alert_card.dart';
 
+
 class PanelPlagasScreen extends StatefulWidget {
   const PanelPlagasScreen({super.key});
 
@@ -30,92 +31,105 @@ class _PanelPlagasScreenState extends State<PanelPlagasScreen> {
   TextEditingController umbralController = TextEditingController();
 
   showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Modificar Umbral por Tipo y Período'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Selector de tipo de insecto
-          DropdownButton<String>(
-            value: tipoSeleccionado,
-            isExpanded: true,
-            items: ['Cucaracha', 'Mosca', 'Hormiga', 'Polilla', 'Lasioderma'].map((tipo) {
-              return DropdownMenuItem<String>(
-                value: tipo,
-                child: Text(tipo),
-              );
-            }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                tipoSeleccionado = value;
-              }
-            },
+  context: context,
+  builder: (context) {
+    String tipoSeleccionado = 'Cucaracha';
+    String periodoSeleccionado = 'hoy';
+    TextEditingController umbralController = TextEditingController();
+
+    return StatefulBuilder(
+      builder: (context, setStateDialog) {
+        return AlertDialog(
+          title: const Text('Modificar Umbral por Tipo y Período'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Selector de tipo de insecto
+              DropdownButton<String>(
+                value: tipoSeleccionado,
+                isExpanded: true,
+                items: ['Cucaracha', 'Mosca', 'Hormiga', 'Polilla', 'Lasioderma']
+                    .map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setStateDialog(() {
+                      tipoSeleccionado = value;
+                    });
+                  }
+                },
+              ),
+
+              const SizedBox(height: 12),
+
+              // Selector de período
+              DropdownButton<String>(
+                value: periodoSeleccionado,
+                isExpanded: true,
+                items: ['hoy', 'semana', 'mes']
+                    .map((periodo) => DropdownMenuItem(
+                          value: periodo,
+                          child: Text(periodo[0].toUpperCase() + periodo.substring(1)),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setStateDialog(() {
+                      periodoSeleccionado = value;
+                    });
+                  }
+                },
+              ),
+
+              const SizedBox(height: 12),
+
+              TextField(
+                controller: umbralController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Nuevo umbral',
+                  hintText: 'Ej: 10',
+                ),
+              ),
+            ],
           ),
-
-          const SizedBox(height: 12),
-
-          // Selector de período
-          DropdownButton<String>(
-            value: periodoSeleccionado,
-            isExpanded: true,
-            items: ['hoy', 'semana', 'mes'].map((periodo) {
-              return DropdownMenuItem<String>(
-                value: periodo,
-                child: Text(periodo[0].toUpperCase() + periodo.substring(1)),
-              );
-            }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                periodoSeleccionado = value;
-              }
-            },
-          ),
-
-          const SizedBox(height: 12),
-
-          // Campo de umbral
-          TextField(
-            controller: umbralController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Nuevo umbral',
-              hintText: 'Ej: 10',
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
             ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            final input = umbralController.text.trim();
-            final nuevo = int.tryParse(input);
+            ElevatedButton(
+              onPressed: () async {
+                final input = umbralController.text.trim();
+                final nuevo = int.tryParse(input);
 
-            if (nuevo == null || nuevo < 1) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Ingresa un número válido mayor o igual a 1')),
-              );
-              return;
-            }
+                if (nuevo == null || nuevo < 1) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Ingresa un número válido mayor o igual a 1')),
+                  );
+                  return;
+                }
 
-            // Llama a tu método con tipo + período
-            await ChartDataService.actualizarUmbral(tipoSeleccionado, periodoSeleccionado, nuevo);
+                await ChartDataService.actualizarUmbral(
+                  tipoSeleccionado,
+                  periodoSeleccionado,
+                  nuevo,
+                );
 
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Umbral actualizado correctamente')),
-            );
-            _loadInsectIndicators();
-          },
-          child: const Text('Guardar'),
-        ),
-      ],
-    ),
-  );
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Umbral actualizado correctamente')),
+                );
+                _loadInsectIndicators();
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+  },
+);
 }
 
   Future<void> _loadAlertasPlaga() async {
@@ -324,8 +338,6 @@ class _PanelPlagasScreenState extends State<PanelPlagasScreen> {
               ),
               const SizedBox(height: 24),
             ],
-
-              
               // Gráfico de tendencia semanal por tipo
               _buildWeeklyTrendChart(),
               const SizedBox(height: 24),
@@ -366,6 +378,17 @@ class _PanelPlagasScreenState extends State<PanelPlagasScreen> {
       ),
     );
   }
+
+    String _getPeriodoFiltro() {
+      switch (selectedFilter) {
+        case TimeFilter.today:
+          return 'hoy';
+        case TimeFilter.week:
+          return 'semana';
+        case TimeFilter.month:
+          return 'mes';
+      }
+    }
 
   Widget _buildTimeFilters() {
     return Card(

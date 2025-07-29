@@ -111,7 +111,7 @@ class _PlagaAlertsScreenState extends State<PlagaAlertsScreen> {
             ],
             if (tipo == "Umbral por intervalo" || tipo == "Aumento sostenido" || tipo == "Detección inmediata") ...[
               SizedBox(height: 8),
-              Text("Umbral promedio: $umbral"),
+              Text("Umbral: $umbral"),
             ],
             if (descripcion.isNotEmpty) ...[
               SizedBox(height: 8),
@@ -133,7 +133,7 @@ class _PlagaAlertsScreenState extends State<PlagaAlertsScreen> {
   String _descripcionPorTipo(String tipo) {
     switch (tipo) {
       case 'Umbral por intervalo':
-        return 'Genera una alerta cuando el promedio de insectos detectados en un intervalo de tiempo específico (por ejemplo, los últimos 30 minutos) supera un umbral definido.';
+        return 'Genera una alerta cuando la cantidad de insectos detectados en un intervalo de tiempo específico (por ejemplo, los últimos 30 minutos) supera un umbral definido.';
       case 'Aumento sostenido':
         return 'Genera una alerta cuando la cantidad de insectos de un tipo específico aumenta día tras día durante un número determinado de días consecutivos, y cada aumento supera un umbral mínimo definido.';
       case 'Presencia crítica':
@@ -183,7 +183,7 @@ class _PlagaAlertsScreenState extends State<PlagaAlertsScreen> {
                     ),
                   if (tipoAlerta == 'Umbral por intervalo' || tipoAlerta == 'Detección inmediata' || tipoAlerta == 'Aumento sostenido')
                     TextFormField(
-                      decoration: InputDecoration(labelText: 'Umbral promedio'),
+                      decoration: InputDecoration(labelText: 'Umbral '),
                       keyboardType: TextInputType.number,
                       onChanged: (val) => umbral = int.tryParse(val) ?? 0,
                     ),

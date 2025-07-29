@@ -100,7 +100,6 @@ static Future<void> actualizarUmbral(String tipo, String periodo, int umbral) as
   });
 }
 
-
   // 🥧 Obtener distribución por tipo de insecto
   static Future<ChartDataResponse<List<InsectTypeData>>>
       fetchInsectTypeDistribution({int days = 30}) async {
