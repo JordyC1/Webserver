@@ -765,10 +765,9 @@ class WeeklyTrendPoint {
     }
 
     Map<String, int> cantidades = {};
+    // Procesar todos los datos de la lista ya que todos corresponden a la misma fecha/hora
     for (final trendData in trendDataList) {
-      if (trendData.fecha == fecha) {
-        cantidades[trendData.tipoInsecto] = trendData.cantidad;
-      }
+      cantidades[trendData.tipoInsecto] = trendData.cantidad;
     }
 
     return WeeklyTrendPoint(
@@ -821,4 +820,64 @@ class ChartDataResponse<T> {
   // Getter methods for compatibility
   bool get isSuccess => success;
   String? get errorMessage => error;
+}
+
+class StackedTrapData {
+  final String trapId;
+  final Map<String, int> insectosPorTipo;
+  final int totalTrap;
+
+  StackedTrapData({
+    required this.trapId,
+    required this.insectosPorTipo,
+    required this.totalTrap,
+  });
+
+  factory StackedTrapData.fromJson(Map<String, dynamic> json) {
+    final insectos = Map<String, int>.from(
+      (json['insectos_por_tipo'] as Map).map(
+        (key, value) => MapEntry(key.toString(), (value as num).toInt()),
+      ),
+    );
+
+    return StackedTrapData(
+      trapId: json['trampa_id'].toString(),
+      insectosPorTipo: insectos,
+      totalTrap: insectos.values.fold(0, (sum, count) => sum + count),
+    );
+  }
+
+  BarChartGroupData toBarChartGroup(
+    int x,
+    List<String> tiposOrdenados,
+    Map<String, Color> coloresPorTipo,
+  ) {
+    double currentY = 0;
+    List<BarChartRodStackItem> stackItems = [];
+
+    for (String tipo in tiposOrdenados) {
+      int cantidad = insectosPorTipo[tipo] ?? 0;
+      if (cantidad > 0) {
+        final color = coloresPorTipo[tipo] ?? Colors.grey;
+        stackItems.add(BarChartRodStackItem(
+          currentY,
+          currentY + cantidad,
+          color,
+        ));
+        currentY += cantidad;
+      }
+    }
+
+    return BarChartGroupData(
+      x: x,
+      barRods: [
+        BarChartRodData(
+          toY: totalTrap.toDouble(),
+          rodStackItems: stackItems,
+          width: 20,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ],
+    );
+  }
 }

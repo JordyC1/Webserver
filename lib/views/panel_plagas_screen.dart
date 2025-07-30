@@ -6,6 +6,7 @@ import '../widgets/charts/weekly_trend_by_type_chart.dart';
 import '../models/chart_models.dart';
 import '../services/chart_data_service.dart';
 import '../widgets/charts/plaga_alert_card.dart';
+import '../widgets/charts/detections_per_trap_chart.dart';
 
 
 class PanelPlagasScreen extends StatefulWidget {
@@ -341,6 +342,8 @@ class _PanelPlagasScreenState extends State<PanelPlagasScreen> {
               // Gráfico de tendencia semanal por tipo
               _buildWeeklyTrendChart(),
               const SizedBox(height: 24),
+              _buildDetectionsPerTrapChart(),
+              const SizedBox(height: 30),
 
               // Grilla de indicadores de insectos
            Row(
@@ -543,7 +546,7 @@ class _PanelPlagasScreenState extends State<PanelPlagasScreen> {
   Widget _buildWeeklyTrendChart() {
     return WeeklyTrendByTypeChart(
       days: _getFilteredDays(),
-      height: 350,
+      height: 500,
       showLegend: true,
     );
   }
@@ -586,4 +589,13 @@ class _PanelPlagasScreenState extends State<PanelPlagasScreen> {
       },
     );
   }
+
+  Widget _buildDetectionsPerTrapChart() {
+    return DetectionsPerTrapChart(
+      days: _getFilteredDays(),
+      height: 350,
+      showLegend: true,
+    );
+  }
+
 }

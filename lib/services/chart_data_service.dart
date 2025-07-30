@@ -997,10 +997,12 @@ static Future<ChartDataResponse<List<WeeklyTrendPoint>>> fetchWeeklyTrendByType(
                     end.day == now.day;
 
     if (isToday) {
-      print("✅ Entrando a endpoint por HORA");
-      // --- HOY: endpoint por hora ---
-      final formattedStart = DateFormat('yyyy-MM-dd 00:00:00').format(now);
-      final formattedEnd = DateFormat('yyyy-MM-dd 23:59:59').format(now);
+      print("✅ Entrando a endpoint por HORA para HOY");
+      // --- HOY: usar endpoint por hora para mostrar 24 horas ---
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+      final formattedStart = DateFormat('yyyy-MM-dd HH:mm:ss').format(startOfDay);
+      final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(endOfDay);
 
       final response = await http.get(
         Uri.parse('$baseUrl/get_incrementos_por_hora.php?inicio=$formattedStart&fin=$formattedEnd'),
@@ -1011,28 +1013,32 @@ static Future<ChartDataResponse<List<WeeklyTrendPoint>>> fetchWeeklyTrendByType(
       }
 
       final jsonData = jsonDecode(response.body);
-      Map<int, List<WeeklyTrendByTypeData>> datosPorHora = {};
+      print("📊 Datos recibidos del API por hora: $jsonData");
+      Map<int, Map<String, int>> datosPorHoraYTipo = {};
 
       for (var item in jsonData) {
         final hora = int.tryParse(item['hora'].toString()) ?? 0;
         final tipo = item['tipo'].toString();
         final cantidad = int.tryParse(item['cantidad'].toString()) ?? 0;
+        print("📊 Procesando: hora=$hora, tipo=$tipo, cantidad=$cantidad");
 
-        datosPorHora.putIfAbsent(hora, () => []).add(
-          WeeklyTrendByTypeData(
-            fecha: "${hora.toString().padLeft(2, '0')}:00",
-            tipoInsecto: tipo,
-            cantidad: cantidad,
-            fechaDateTime: DateTime(now.year, now.month, now.day, hora),
-          ),
-        );
+        datosPorHoraYTipo.putIfAbsent(hora, () => {})[tipo] = cantidad;
       }
 
-      // Llenar las 24 horas
+      // Generar 24 puntos horarios
       List<WeeklyTrendPoint> puntos = [];
       for (int h = 0; h < 24; h++) {
-        final datos = datosPorHora[h] ?? [];
-        puntos.add(WeeklyTrendPoint.fromTrendDataList("${h.toString().padLeft(2, '0')}:00", datos));
+        final fechaHora = DateTime(now.year, now.month, now.day, h);
+        final fechaStr = DateFormat('yyyy-MM-dd HH:00').format(fechaHora);
+        final cantidadesPorTipo = datosPorHoraYTipo[h] ?? <String, int>{};
+        
+        final punto = WeeklyTrendPoint(
+          fecha: fechaStr,
+          cantidadesPorTipo: cantidadesPorTipo,
+          fechaDateTime: fechaHora,
+        );
+        print("📊 Hora ${h.toString().padLeft(2, '0')}:00: ${punto.cantidadesPorTipo} (total: ${punto.totalInsectos})");
+        puntos.add(punto);
       }
 
       return ChartDataResponse.success(puntos);
@@ -1134,4 +1140,71 @@ static Future<ChartDataResponse<List<WeeklyTrendPoint>>> fetchWeeklyTrendByType(
       'typeIndicators': results[8],
     };
   }
+
+  static Future<ChartDataResponse<List<StackedTrapData>>> fetchStackedTrapData({required int days}) async {
+    try {
+      final now = DateTime.now();
+      DateTime start;
+      final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+      String endpoint;
+      String formattedStart;
+      final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(end);
+
+      if (days == 1) {
+        start = DateTime(now.year, now.month, now.day);
+        endpoint = 'get_incrementos_por_hora.php';
+        formattedStart = DateFormat('yyyy-MM-dd HH:mm:ss').format(start);
+      } else {
+        start = now.subtract(Duration(days: days - 1));
+        start = DateTime(start.year, start.month, start.day);
+        endpoint = 'get_incrementos_por_dia.php';
+        formattedStart = DateFormat('yyyy-MM-dd').format(start);
+      }
+
+      // Fetch trap IDs
+      final trapsResponse = await http.get(Uri.parse('$baseUrl/get_trampas.php')).timeout(const Duration(seconds: 10));
+      if (trapsResponse.statusCode != 200) {
+        return ChartDataResponse.error('Error al obtener trampas');
+      }
+      final trapsJson = jsonDecode(trapsResponse.body);
+      List<String> trapIds = [];
+      if (trapsJson is List) {
+        trapIds = trapsJson.map((t) => t['trampa_id']?.toString() ?? '').where((id) => id.isNotEmpty).toList();
+      } else if (trapsJson['success'] && trapsJson['data'] is List) {
+        trapIds = (trapsJson['data'] as List).map((t) => t['trampa_id']?.toString() ?? '').where((id) => id.isNotEmpty).toList();
+      }
+      if (trapIds.isEmpty) {
+        return ChartDataResponse.error('No se encontraron trampas');
+      }
+
+      // Fetch data for each trap
+      List<StackedTrapData> data = [];
+      for (String trapId in trapIds) {
+        final url = Uri.parse('$baseUrl/$endpoint?inicio=$formattedStart&fin=$formattedEnd&trampa_id=$trapId');
+        final response = await http.get(url).timeout(const Duration(seconds: 10));
+        if (response.statusCode == 200) {
+          final jsonData = jsonDecode(response.body);
+          Map<String, int> insectosPorTipo = {};
+          for (var item in jsonData) {
+            final tipo = item['tipo']?.toString() ?? 'desconocido';
+            final cantidad = int.tryParse(item['cantidad']?.toString() ?? '0') ?? 0;
+            insectosPorTipo[tipo] = (insectosPorTipo[tipo] ?? 0) + cantidad;
+          }
+          final total = insectosPorTipo.values.fold(0, (sum, v) => sum + v);
+          data.add(StackedTrapData(
+            trapId: trapId,
+            insectosPorTipo: insectosPorTipo,
+            totalTrap: total,
+          ));
+        }
+      }
+
+      data = data.where((d) => d.totalTrap > 0).toList();
+      data.sort((a, b) => int.parse(a.trapId).compareTo(int.parse(b.trapId)));
+      return ChartDataResponse.success(data);
+    } catch (e) {
+      return ChartDataResponse.error('Error al cargar datos por trampa: $e');
+    }
+  }
+
 }

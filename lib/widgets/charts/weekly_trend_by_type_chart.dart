@@ -98,8 +98,8 @@ class _WeeklyTrendByTypeChartState extends State<WeeklyTrendByTypeChart>
       
       if (widget.days == 1) {
         // Para "Hoy", trabajar por horas (últimas 24 horas)
-        endDate = now;
-        startDate = now.subtract(const Duration(hours: 23));
+        endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
+        startDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: widget.days - 1));
       } else {
         // Para otros períodos, trabajar por días
         endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
@@ -157,6 +157,7 @@ class _WeeklyTrendByTypeChartState extends State<WeeklyTrendByTypeChart>
       chart: Column(
         children: [
           Expanded(child: _buildChart()),
+          Text("data de insectos por tipo"),
           if (widget.showLegend && insectTypes.isNotEmpty) ...[
             const SizedBox(height: 16),
             _buildLegend(),
@@ -256,8 +257,6 @@ class _WeeklyTrendByTypeChartState extends State<WeeklyTrendByTypeChart>
             maxY: _getMaxY(),
             clipData: FlClipData.all(),
           ),
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
         );
       },
     );
@@ -405,9 +404,14 @@ class _WeeklyTrendByTypeChartState extends State<WeeklyTrendByTypeChart>
     return LineTouchData(
       enabled: true,
       touchTooltipData: LineTouchTooltipData(
+        showOnTopOfTheChartBoxArea: true,
+tooltipPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+tooltipMargin: 0, // ⚠️ Esto es clave
+fitInsideHorizontally: true,
+fitInsideVertically: true, // ⚠️ Para evitar que "empuje" widgets
+
         tooltipBgColor: AppTheme.cardBackground,
         tooltipRoundedRadius: 8,
-        tooltipPadding: const EdgeInsets.all(8),
         getTooltipItems: (touchedSpots) {
           if (touchedSpots.isEmpty) return [];
           
@@ -440,29 +444,22 @@ class _WeeklyTrendByTypeChartState extends State<WeeklyTrendByTypeChart>
           
           final List<LineTooltipItem> items = [];
           
-          // Título con la fecha
-          items.add(
-            LineTooltipItem(
-              '$fechaFormateada\n',
-              TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          );
-          
-          // Información de cada tipo de insecto
-          for (final spot in touchedSpots) {
-            final typeIndex = touchedSpots.indexOf(spot);
+          for (int i = 0; i < touchedSpots.length; i++) {
+            final spot = touchedSpots[i];
+            final typeIndex = i;
             if (typeIndex < insectTypes.length) {
               final type = insectTypes[typeIndex];
               final cantidad = data.cantidadesPorTipo[type] ?? 0;
               final color = _getTypeColors()[typeIndex % _getTypeColors().length];
               
+              String text = '$type: $cantidad\n';
+              if (i == 0) {
+                text = '$fechaFormateada\n$text';
+              }
+              
               items.add(
                 LineTooltipItem(
-                  '$type: $cantidad\n',
+                  text,
                   TextStyle(
                     color: color,
                     fontSize: 11,
@@ -584,9 +581,9 @@ class _WeeklyTrendByTypeChartState extends State<WeeklyTrendByTypeChart>
         .reduce((a, b) => a.value > b.value ? a : b);
     
     final promedio = widget.days == 1 
-        ? (totalGeneral / 24).toStringAsFixed(1)  // Promedio por hora para período de 1 día
-        : (totalGeneral / widget.days).toStringAsFixed(1);  // Promedio por día para otros períodos
-    final promedioLabel = widget.days == 1 ? 'Promedio/hora' : 'Promedio/día';
+         ? (totalGeneral / 24).toStringAsFixed(1)  // Promedio por hora para período de 1 día
+         : (totalGeneral / widget.days).toStringAsFixed(1);  // Promedio por día para otros períodos
+     final promedioLabel = widget.days == 1 ? 'Promedio/hora' : 'Promedio/día';
 
     return ChartStats(
       stats: [
