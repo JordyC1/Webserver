@@ -6,7 +6,7 @@ import '../widgets/charts/weekly_trend_by_type_chart.dart';
 import '../models/chart_models.dart';
 import '../services/chart_data_service.dart';
 import '../widgets/charts/plaga_alert_card.dart';
-import '../widgets/charts/detections_per_trap_chart.dart';
+import '../widgets/charts/grouped_detections_chart.dart';
 
 
 class PanelPlagasScreen extends StatefulWidget {
@@ -591,9 +591,9 @@ class _PanelPlagasScreenState extends State<PanelPlagasScreen> {
   }
 
   Widget _buildDetectionsPerTrapChart() {
-    return DetectionsPerTrapChart(
+    return GroupedDetectionsChart(
       days: _getFilteredDays(),
-      height: 350,
+      height: 600,
       showLegend: true,
     );
   }

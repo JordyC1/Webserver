@@ -5,12 +5,12 @@ import '../../models/chart_models.dart';
 import '../../services/chart_data_service.dart';
 import 'base_chart_card.dart';
 
-class DetectionsPerTrapChart extends StatefulWidget {
+class GroupedDetectionsChart extends StatefulWidget {
   final int days;
   final double? height;
   final bool showLegend;
 
-  const DetectionsPerTrapChart({
+  const GroupedDetectionsChart({
     Key? key,
     this.days = 7,
     this.height,
@@ -18,12 +18,12 @@ class DetectionsPerTrapChart extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<DetectionsPerTrapChart> createState() => _DetectionsPerTrapChartState();
+  State<GroupedDetectionsChart> createState() => _GroupedDetectionsChartState();
 }
 
-class _DetectionsPerTrapChartState extends State<DetectionsPerTrapChart>
+class _GroupedDetectionsChartState extends State<GroupedDetectionsChart>
     with SingleTickerProviderStateMixin {
-  List<StackedTrapData>? chartData;
+  List<GroupedDetectionData>? chartData;
   bool isLoading = true;
   String? errorMessage;
   List<String> tiposOrdenados = [];
@@ -51,7 +51,7 @@ class _DetectionsPerTrapChartState extends State<DetectionsPerTrapChart>
   }
 
   @override
-  void didUpdateWidget(DetectionsPerTrapChart oldWidget) {
+  void didUpdateWidget(GroupedDetectionsChart oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.days != widget.days) {
       _loadData();
@@ -66,7 +66,7 @@ class _DetectionsPerTrapChartState extends State<DetectionsPerTrapChart>
 
     try {
       final response =
-          await ChartDataService.fetchStackedTrapData(days: widget.days);
+          await ChartDataService.fetchGroupedDetectionData(days: widget.days);
 
       if (response.success && response.data != null) {
         setState(() {
@@ -95,7 +95,7 @@ class _DetectionsPerTrapChartState extends State<DetectionsPerTrapChart>
     // Extraer todos los tipos únicos y crear colores
     Set<String> tiposUnicos = {};
     for (var data in chartData!) {
-      tiposUnicos.addAll(data.insectosPorTipo.keys);
+      tiposUnicos.addAll(data.tiposInsectos);
     }
 
     tiposOrdenados = tiposUnicos.toList()..sort();
@@ -124,9 +124,9 @@ class _DetectionsPerTrapChartState extends State<DetectionsPerTrapChart>
   @override
   Widget build(BuildContext context) {
     return BaseChartCard(
-      title: 'Detecciones por Trampa y Tipo',
-      subtitle: 'Últimos ${widget.days} días - Barras apiladas',
-      height: widget.height ?? 350,
+      title: 'Detecciones por Trampa y Tipo de Insecto',
+        subtitle: 'Últimos ${widget.days} ${widget.days == 1 ? 'horas' : 'días'} - Barras agrupadas por trampa',
+      height: widget.height ?? 600, // Aumentado de 500 a 600 para más espacio del gráfico
       isLoading: isLoading,
       errorMessage: errorMessage,
       onRefresh: _loadData,
@@ -137,8 +137,11 @@ class _DetectionsPerTrapChartState extends State<DetectionsPerTrapChart>
             _buildTopLegend(),
             const SizedBox(height: 16),
           ],
-          // Gráfico
-          Expanded(child: _buildChart()),
+          // Gráfico - Aumentado el espacio
+          Expanded(
+            flex: 5, // Aún más espacio para el gráfico
+            child: _buildChart(),
+          ),
         ],
       ),
       footer: _buildStats(),
@@ -148,7 +151,8 @@ class _DetectionsPerTrapChartState extends State<DetectionsPerTrapChart>
   Widget _buildChart() {
     final bool sinDetecciones = chartData == null ||
         chartData!.isEmpty ||
-        chartData!.every((data) => data.totalTrap == 0);
+        chartData!.every((data) => data.tiposPorCantidad.values
+            .every((cantidad) => cantidad == 0));
 
     if (sinDetecciones) {
       return const Center(
@@ -162,13 +166,14 @@ class _DetectionsPerTrapChartState extends State<DetectionsPerTrapChart>
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
             Text(
-              'No se registraron insectos en las trampas',
+              'No se registraron insectos en el período seleccionado',
               style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
           ],
         ),
       );
     }
+    
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
@@ -239,18 +244,16 @@ class _DetectionsPerTrapChartState extends State<DetectionsPerTrapChart>
           getTitlesWidget: (value, meta) {
             final index = value.toInt();
             if (index >= 0 && index < chartData!.length) {
-              final etiqueta = chartData![index].trapId;
+              final trampaId = chartData![index].trampaId;
 
               return SideTitleWidget(
                 axisSide: meta.axisSide,
-                child: Transform.rotate(
-                  angle: -0.5, // -30 grados
-                  child: Text(
-                    etiqueta,
-                    style: TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 10,
-                    ),
+                child: Text(
+                  'T$trampaId',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               );
@@ -283,25 +286,29 @@ class _DetectionsPerTrapChartState extends State<DetectionsPerTrapChart>
         tooltipPadding: const EdgeInsets.all(8),
         getTooltipItem: (group, groupIndex, rod, rodIndex) {
           final data = chartData![group.x.toInt()];
-
-          // Encontrar el tipo correspondiente al rod
+          
+          // Encontrar la trampa y tipo correspondiente al rod
+          int currentRodIndex = 0;
+          String? trampaActual;
           String? tipoActual;
-          double currentY = 0;
+          int? cantidadActual;
+          
           for (String tipo in tiposOrdenados) {
-            int cantidad = data.insectosPorTipo[tipo] ?? 0;
+            int cantidad = data.tiposPorCantidad[tipo] ?? 0;
             if (cantidad > 0) {
-              if (rod.fromY == currentY && rod.toY == currentY + cantidad) {
+              if (currentRodIndex == rodIndex) {
+                trampaActual = data.trampaId;
                 tipoActual = tipo;
+                cantidadActual = cantidad;
                 break;
               }
-              currentY += cantidad;
+              currentRodIndex++;
             }
           }
-
-          if (tipoActual != null) {
-            final cantidad = data.insectosPorTipo[tipoActual] ?? 0;
+          
+          if (trampaActual != null && tipoActual != null && cantidadActual != null) {
             return BarTooltipItem(
-              '$tipoActual\nTrampa ${data.trapId}\n$cantidad insectos',
+              '$tipoActual\nTrampa $trampaActual\n$cantidadActual insectos',
               TextStyle(
                 color: AppTheme.textPrimary,
                 fontSize: 12,
@@ -322,8 +329,17 @@ class _DetectionsPerTrapChartState extends State<DetectionsPerTrapChart>
 
   double _getMaxY() {
     if (chartData == null || chartData!.isEmpty) return 10;
-    final maxValue =
-        chartData!.map((e) => e.totalTrap).reduce((a, b) => a > b ? a : b);
+    
+    double maxValue = 0;
+    for (var data in chartData!) {
+      for (String tipo in tiposOrdenados) {
+        double cantidad = (data.tiposPorCantidad[tipo] ?? 0).toDouble();
+        if (cantidad > maxValue) {
+          maxValue = cantidad;
+        }
+      }
+    }
+    
     return (maxValue + (maxValue * 0.1)).clamp(1, double.infinity);
   }
 
@@ -350,46 +366,181 @@ class _DetectionsPerTrapChartState extends State<DetectionsPerTrapChart>
   }
 
   Widget _buildStats() {
-    if (chartData == null || chartData!.isEmpty) return const SizedBox.shrink();
+    if (chartData == null || chartData!.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-    final totalGeneral = chartData!.fold(0, (sum, data) => sum + data.totalTrap);
-    final promedioPorTrampa = totalGeneral / chartData!.length;
-    final trampaMaxima =
-        chartData!.reduce((a, b) => a.totalTrap > b.totalTrap ? a : b);
-
-    // Calcular tipo más común
+    // Calcular estadísticas
     Map<String, int> totalPorTipo = {};
+    int totalGeneral = 0;
+    String trampaMaxima = 'Ninguna';
+    int maxCantidadTrampa = 0;
+    
     for (var data in chartData!) {
-      data.insectosPorTipo.forEach((tipo, cantidad) {
+      int totalTrampa = 0;
+      for (String tipo in data.tiposInsectos) {
+        int cantidad = data.tiposPorCantidad[tipo] ?? 0;
         totalPorTipo[tipo] = (totalPorTipo[tipo] ?? 0) + cantidad;
-      });
+        totalGeneral += cantidad;
+        totalTrampa += cantidad;
+      }
+      
+      if (totalTrampa > maxCantidadTrampa) {
+        maxCantidadTrampa = totalTrampa;
+        trampaMaxima = 'T${data.trampaId}';
+      }
     }
 
-    String tipoMasComun = 'N/A';
-    if (totalPorTipo.isNotEmpty) {
-      tipoMasComun =
-          totalPorTipo.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+    String tipoMasComun = 'Ninguno';
+    int maxCantidad = 0;
+    for (var entry in totalPorTipo.entries) {
+      if (entry.value > maxCantidad) {
+        maxCantidad = entry.value;
+        tipoMasComun = entry.key;
+      }
     }
 
-    return ChartStats(
-      stats: [
-        ChartStatItem(
-          label: 'Total',
-          value: totalGeneral.toString(),
-          valueColor: AppTheme.primaryBlue,
+    double promedio = totalGeneral / (chartData!.length > 0 ? chartData!.length : 1);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildStatCard(
+              'Total',
+              totalGeneral.toString(),
+              Icons.analytics,
+              const Color(0xFF2196F3),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatCard(
+              'Promedio/trampa',
+              promedio.toStringAsFixed(1),
+              Icons.trending_up,
+              const Color(0xFF4CAF50),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+             child: _buildStatCard(
+               'Trampa máxima',
+               '$trampaMaxima',
+               Icons.location_on,
+               const Color(0xFFFF9800),
+             ),
+           ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatCard(
+              'Tipo más común',
+              tipoMasComun,
+              Icons.star,
+              const Color(0xFF9C27B0),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
         ),
-        ChartStatItem(
-          label: 'Promedio/trampa',
-          value: promedioPorTrampa.toStringAsFixed(1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ChartIndicator extends StatelessWidget {
+  final Color color;
+  final String text;
+  final bool isSquare;
+  final double size;
+
+  const ChartIndicator({
+    Key? key,
+    required this.color,
+    required this.text,
+    this.isSquare = false,
+    this.size = 16,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: isSquare ? BoxShape.rectangle : BoxShape.circle,
+            color: color,
+            borderRadius: isSquare ? BorderRadius.circular(2) : null,
+          ),
         ),
-        ChartStatItem(
-          label: 'Trampa máxima',
-          value: '${trampaMaxima.totalTrap} (ID ${trampaMaxima.trapId})',
-        ),
-        ChartStatItem(
-          label: 'Tipo más común',
-          value: tipoMasComun,
-          valueColor: coloresPorTipo[tipoMasComun],
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            color: AppTheme.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );

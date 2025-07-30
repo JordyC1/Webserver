@@ -881,3 +881,70 @@ class StackedTrapData {
     );
   }
 }
+
+// Nuevo modelo para datos de detecciones por fecha/hora y trampa
+class DetectionByDateTrapData {
+  final String fecha; // fecha o hora
+  final String trampaId;
+  final String tipo;
+  final int cantidad;
+
+  DetectionByDateTrapData({
+    required this.fecha,
+    required this.trampaId,
+    required this.tipo,
+    required this.cantidad,
+  });
+
+  factory DetectionByDateTrapData.fromJson(Map<String, dynamic> json) {
+    return DetectionByDateTrapData(
+      fecha: json['fecha']?.toString() ?? json['hora']?.toString() ?? '',
+      trampaId: json['trampa_id']?.toString() ?? '',
+      tipo: json['tipo']?.toString() ?? '',
+      cantidad: int.tryParse(json['cantidad']?.toString() ?? '0') ?? 0,
+    );
+  }
+}
+
+// Modelo para agrupar datos por trampa para el gráfico de barras agrupadas
+class GroupedDetectionData {
+  final String trampaId; // ID de la trampa
+  final Map<String, int> tiposPorCantidad; // tipo -> cantidad
+  final List<String> tiposInsectos;
+
+  GroupedDetectionData({
+    required this.trampaId,
+    required this.tiposPorCantidad,
+    required this.tiposInsectos,
+  });
+
+  // Crear BarChartGroupData para barras agrupadas por tipo de insecto
+  BarChartGroupData toBarChartGroup(
+    int x,
+    List<String> tiposOrdenados,
+    Map<String, Color> coloresPorTipo,
+  ) {
+    List<BarChartRodData> rods = [];
+    
+    // Crear una barra por cada tipo de insecto en esta trampa
+    for (int i = 0; i < tiposOrdenados.length; i++) {
+      String tipo = tiposOrdenados[i];
+      int cantidad = tiposPorCantidad[tipo] ?? 0;
+      
+      if (cantidad > 0) {
+        rods.add(BarChartRodData(
+          toY: cantidad.toDouble(),
+          color: coloresPorTipo[tipo] ?? Colors.grey,
+          width: 12,
+          borderRadius: BorderRadius.circular(2),
+        ));
+      }
+    }
+
+    return BarChartGroupData(
+      x: x,
+      barRods: rods,
+      barsSpace: 2,
+    );
+  }
+}

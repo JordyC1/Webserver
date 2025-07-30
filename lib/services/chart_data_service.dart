@@ -1199,11 +1199,81 @@ static Future<ChartDataResponse<List<WeeklyTrendPoint>>> fetchWeeklyTrendByType(
         }
       }
 
-      data = data.where((d) => d.totalTrap > 0).toList();
       data.sort((a, b) => int.parse(a.trapId).compareTo(int.parse(b.trapId)));
       return ChartDataResponse.success(data);
     } catch (e) {
       return ChartDataResponse.error('Error al cargar datos por trampa: $e');
+    }
+  }
+
+  // Función para obtener datos agrupados por trampa con tipos de insectos
+  static Future<ChartDataResponse<List<GroupedDetectionData>>> fetchGroupedDetectionData({required int days}) async {
+    try {
+      final now = DateTime.now();
+      DateTime start;
+      final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+      String endpoint;
+      String formattedStart;
+      final formattedEnd = DateFormat('yyyy-MM-dd HH:mm:ss').format(end);
+
+      if (days == 1) {
+        start = DateTime(now.year, now.month, now.day);
+        endpoint = 'get_incrementos_por_hora_con_trampa.php';
+        formattedStart = DateFormat('yyyy-MM-dd HH:mm:ss').format(start);
+      } else {
+        start = now.subtract(Duration(days: days - 1));
+        start = DateTime(start.year, start.month, start.day);
+        endpoint = 'get_incrementos_por_dia_con_trampa.php';
+        formattedStart = DateFormat('yyyy-MM-dd').format(start);
+      }
+
+      // Obtener todos los datos
+      final url = Uri.parse('$baseUrl/$endpoint?inicio=$formattedStart&fin=$formattedEnd');
+      final response = await http.get(url).timeout(const Duration(seconds: 15));
+      
+      if (response.statusCode != 200) {
+        return ChartDataResponse.error('Error al obtener datos: ${response.statusCode}');
+      }
+
+      final jsonData = jsonDecode(response.body);
+      if (jsonData is! List) {
+        return ChartDataResponse.error('Formato de datos inválido');
+      }
+
+      // Convertir a objetos DetectionByDateTrapData
+      List<DetectionByDateTrapData> detections = jsonData
+          .map((item) => DetectionByDateTrapData.fromJson(item))
+          .toList();
+
+      // Agrupar por trampa_id
+      Map<String, Map<String, int>> groupedByTrap = {};
+      Set<String> allTypes = {};
+
+      for (var detection in detections) {
+        groupedByTrap[detection.trampaId] ??= {};
+        groupedByTrap[detection.trampaId]![detection.tipo] = 
+            (groupedByTrap[detection.trampaId]![detection.tipo] ?? 0) + detection.cantidad;
+        
+        allTypes.add(detection.tipo);
+      }
+
+      // Crear lista de GroupedDetectionData
+      List<GroupedDetectionData> result = [];
+      List<String> sortedTraps = groupedByTrap.keys.toList()
+        ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+      List<String> sortedTypes = allTypes.toList()..sort();
+
+      for (String trampaId in sortedTraps) {
+        result.add(GroupedDetectionData(
+          trampaId: trampaId,
+          tiposPorCantidad: groupedByTrap[trampaId]!,
+          tiposInsectos: sortedTypes,
+        ));
+      }
+
+      return ChartDataResponse.success(result);
+    } catch (e) {
+      return ChartDataResponse.error('Error al cargar datos agrupados: $e');
     }
   }
 
